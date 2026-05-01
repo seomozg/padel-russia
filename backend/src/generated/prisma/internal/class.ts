@@ -23,7 +23,7 @@ const config: runtime.GetPrismaClientConfig = {
       "value": "prisma-client"
     },
     "output": {
-      "value": "C:\\Users\\HONOR\\Desktop\\dev\\papa-padel\\backend\\src\\generated\\prisma",
+      "value": "C:\\Users\\HONOR\\Desktop\\dev\\padel-russia\\backend\\src\\generated\\prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -37,7 +37,7 @@ const config: runtime.GetPrismaClientConfig = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "C:\\Users\\HONOR\\Desktop\\dev\\papa-padel\\backend\\prisma\\schema.prisma",
+    "sourceFilePath": "C:\\Users\\HONOR\\Desktop\\dev\\padel-russia\\backend\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativePath": "../../../prisma",
