@@ -6,7 +6,7 @@ interface SEOHeadProps {
 }
 
 export default function SEOHead({ title, description }: SEOHeadProps) {
-  const fullTitle = `${title} — PapaPadel`;
+  const fullTitle = `${title} — PadelRussia`;
   const metaDescription = description || "Поиск падел-кортов и клубов по всей России.";
 
   useEffect(() => {

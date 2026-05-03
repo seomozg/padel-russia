@@ -1,4 +1,4 @@
-# PapaPadel Backend API
+# PadelRussia Backend API
 
 Модульный бэкенд для сайта про падел теннис в России, разработанный с использованием TDD подхода.
 
@@ -167,7 +167,7 @@ GET /articles
     "content": "Полный текст новости...",
     "category": "Турниры",
     "readTime": 5,
-    "author": "Редакция PapaPadel",
+    "author": "Редакция PadelRussia",
     "published": true,
     "image": "https://example.com/image.jpg",
     "sourceUrl": "https://original-source.com/news",

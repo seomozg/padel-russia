@@ -226,7 +226,7 @@ export default function Index() {
       <section className="py-20 bg-muted/40">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <p className="text-primary text-sm font-semibold mb-2 uppercase tracking-wider">Почему PapaPadel</p>
+            <p className="text-primary text-sm font-semibold mb-2 uppercase tracking-wider">Почему PadelRussia</p>
             <h2 className="font-display font-bold text-3xl md:text-4xl">Всё для падела в одном месте</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -41,8 +41,8 @@ services:
       - "443:443"
     volumes:
       - ./nginx/prod.conf:/etc/nginx/conf.d/default.conf
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-      - ./nginx/www:/var/www/certbot
+      - ./ssl/certs:/etc/letsencrypt/live
+      - ./ssl/www:/var/www/certbot
       - images-data:/var/www/images
     depends_on:
       - frontend

@@ -68,7 +68,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-border mt-8 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-muted-foreground">© 2026 PapaPadel. Все права защищены.</p>
+          <p className="text-xs text-muted-foreground">© 2026 PadelRussia. Все права защищены.</p>
           <p className="text-xs text-muted-foreground">Сделано с ❤️ для любителей падела</p>
         </div>
       </div>

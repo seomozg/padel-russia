@@ -61,7 +61,7 @@ export default function Admin() {
     content: '',
     category: 'Новости клубов',
     readTime: 5,
-    author: 'Редакция PapaPadel',
+    author: 'Редакция PadelRussia',
     image: '',
     published: true
   });
@@ -339,7 +339,7 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEOHead title="Админ-панель" description="Управление контентом PapaPadel — корты и статьи." />
+      <SEOHead title="Админ-панель" description="Управление контентом PadelRussia — корты и статьи." />
       <div className="pt-20">
         <div className="container mx-auto px-4 py-8">
           {/* Header */}
@@ -352,7 +352,7 @@ export default function Admin() {
                 <ArrowLeft size={16} /> На главную
               </Link>
               <h1 className="font-display font-bold text-3xl">Админ-панель</h1>
-              <p className="text-muted-foreground">Управление контентом PapaPadel</p>
+              <p className="text-muted-foreground">Управление контентом PadelRussia</p>
             </div>
           </div>
 
