@@ -80,7 +80,7 @@ print_success "Deployment directory created"
 print_status "Step 5: Cloning/updating repository..."
 if ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_HOST" "[ -d $DEPLOY_PATH/.git ]"; then
     print_status "Repository exists, pulling latest changes..."
-    ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_HOST" "cd $DEPLOY_PATH && git pull origin main"
+    ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_HOST" "cd $DEPLOY_PATH && git pull origin master"
 else
     print_status "Cloning repository..."
     ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_HOST" "git clone $GIT_REPO $DEPLOY_PATH"
