@@ -13,7 +13,7 @@ export default function Footer() {
                 <span className="text-primary-foreground font-display text-sm font-bold">P</span>
               </div>
               <span className="font-display font-bold text-lg">
-                Papa<span className="text-primary">Padel</span>
+                Padel<span className="text-primary">Russia</span>
               </span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
