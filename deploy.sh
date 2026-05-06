@@ -99,8 +99,9 @@ print_status "Step 7: Copying production configuration files..."
 # Copy docker-compose.prod.yml
 scp -i "$SSH_KEY" docker-compose.prod.yml "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/docker-compose.yml"
 
-# Copy nginx configuration
-scp -i "$SSH_KEY" nginx/prod.conf "$SERVER_USER@$SERVER_HOST:$DEPLOY_PATH/nginx/prod.conf"
+# Copy nginx configuration to system nginx and reload
+scp -i "$SSH_KEY" nginx/prod.conf "$SERVER_USER@$SERVER_HOST:/etc/nginx/sites-enabled/padel-russia.online"
+ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_HOST" "nginx -t && nginx -s reload && echo 'Nginx reloaded OK'"
 
 print_success "Configuration files copied"
 
