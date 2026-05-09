@@ -381,11 +381,19 @@ export default function CourtDetail() {
                       <Clock size={15} className="text-primary shrink-0" />
                       <span className="text-xs text-muted-foreground">Часы работы</span>
                     </div>
-                    {court.workingHours.split(", ").map((day, index) => (
-                      <div key={index} className="text-xs leading-relaxed pl-6">
-                        {day}
-                      </div>
-                    ))}
+                    <table className="w-full text-xs">
+                      <tbody>
+                        {court.workingHours.split(", ").map((item, index) => {
+                          const [day, time] = item.split(": ");
+                          return (
+                            <tr key={index} className={index % 2 === 0 ? "bg-muted/30" : ""}>
+                              <td className="py-1 pl-2 pr-2 text-muted-foreground rounded-l">{day}</td>
+                              <td className="py-1 pr-2 text-right font-medium rounded-r">{time}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Phone size={15} className="text-primary" />
