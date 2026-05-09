@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import { courtsRouter } from './modules/courts/courts.routes';
 import { articlesRouter } from './modules/articles/articles.routes';
 import { reviewsRouter } from './modules/reviews/reviews.routes';
@@ -17,7 +18,8 @@ const PORT = process.env.PORT || 3001;
 // Настройка multer для загрузки изображений
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = path.join(process.cwd(), '..', 'frontend', 'public', 'images', 'courts');
+    const uploadPath = path.join(process.cwd(), 'public', 'images', 'courts');
+    fs.mkdirSync(uploadPath, { recursive: true });
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
