@@ -376,9 +376,16 @@ export default function CourtDetail() {
                 </div>
 
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Clock size={15} className="text-primary" />
-                    <span>{court.workingHours}</span>
+                  <div className="text-muted-foreground">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock size={15} className="text-primary shrink-0" />
+                      <span className="text-xs text-muted-foreground">Часы работы</span>
+                    </div>
+                    {court.workingHours.split(", ").map((day, index) => (
+                      <div key={index} className="text-xs leading-relaxed pl-6">
+                        {day}
+                      </div>
+                    ))}
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Phone size={15} className="text-primary" />
