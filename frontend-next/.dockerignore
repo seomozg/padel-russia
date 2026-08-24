@@ -1,0 +1,8 @@
+node_modules
+.next
+.git
+*.md
+.env*.local
+npm-debug.log*
+.DS_Store
+add-use-client.ps1

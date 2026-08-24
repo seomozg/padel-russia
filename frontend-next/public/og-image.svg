@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#15803d"/>
+      <stop offset="100%" stop-color="#22c55e"/>
+    </linearGradient>
+    <linearGradient id="overlay" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.4"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#overlay)"/>
+
+  <!-- Decorative circles -->
+  <circle cx="1050" cy="120" r="180" fill="#ffffff" opacity="0.08"/>
+  <circle cx="1100" cy="540" r="120" fill="#ffffff" opacity="0.06"/>
+  <circle cx="120" cy="520" r="90" fill="#ffffff" opacity="0.05"/>
+
+  <!-- Logo badge -->
+  <g transform="translate(80, 80)">
+    <rect width="80" height="80" rx="16" fill="#ffffff"/>
+    <text x="40" y="56" font-family="Arial, sans-serif" font-size="44" font-weight="900" fill="#15803d" text-anchor="middle">P</text>
+  </g>
+  <text x="180" y="135" font-family="Arial, sans-serif" font-size="36" font-weight="700" fill="#ffffff">PadelRussia</text>
+
+  <!-- Main title -->
+  <text x="80" y="320" font-family="Arial, sans-serif" font-size="72" font-weight="900" fill="#ffffff">Падел-корты России</text>
+
+  <!-- Subtitle -->
+  <text x="80" y="400" font-family="Arial, sans-serif" font-size="34" font-weight="400" fill="#ffffff" opacity="0.92">Каталог кортов, рейтинги, отзывы и карта</text>
+  <text x="80" y="450" font-family="Arial, sans-serif" font-size="34" font-weight="400" fill="#ffffff" opacity="0.92">падел-клубов по всей стране</text>
+
+  <!-- Bottom badge -->
+  <rect x="80" y="510" width="380" height="60" rx="30" fill="#ffffff" opacity="0.15"/>
+  <text x="270" y="550" font-family="Arial, sans-serif" font-size="26" font-weight="600" fill="#ffffff" text-anchor="middle">🎾 padel-russia.online</text>
+</svg>

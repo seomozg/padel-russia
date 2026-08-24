@@ -1,0 +1,195 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Padel Green - main brand */
+    --primary: 152 64% 38%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 152 70% 50%;
+    --primary-muted: 152 40% 92%;
+
+    /* Backgrounds */
+    --background: 0 0% 99%;
+    --foreground: 220 25% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 25% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 10%;
+
+    /* Secondary - navy */
+    --secondary: 220 30% 96%;
+    --secondary-foreground: 220 25% 10%;
+
+    --muted: 220 20% 95%;
+    --muted-foreground: 220 15% 52%;
+
+    --accent: 152 30% 92%;
+    --accent-foreground: 152 64% 28%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 20% 91%;
+    --input: 220 20% 91%;
+    --ring: 152 64% 38%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 220 25% 10%;
+    --sidebar-primary: 152 64% 38%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 152 30% 92%;
+    --sidebar-accent-foreground: 152 64% 28%;
+    --sidebar-border: 220 20% 91%;
+    --sidebar-ring: 152 64% 38%;
+
+    /* Custom tokens */
+    --hero-overlay: linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.65) 100%);
+    --card-shadow: 0 2px 16px 0 hsl(220 25% 10% / 0.07);
+    --card-shadow-hover: 0 8px 32px 0 hsl(220 25% 10% / 0.14);
+    --nav-bg: hsl(0 0% 100% / 0.92);
+    --badge-sport: hsl(152 64% 38%);
+  }
+
+  .dark {
+    --background: 220 25% 8%;
+    --foreground: 220 15% 95%;
+
+    --card: 220 25% 11%;
+    --card-foreground: 220 15% 95%;
+
+    --popover: 220 25% 11%;
+    --popover-foreground: 220 15% 95%;
+
+    --primary: 152 60% 46%;
+    --primary-foreground: 220 25% 8%;
+    --primary-glow: 152 65% 55%;
+    --primary-muted: 152 30% 20%;
+
+    --secondary: 220 25% 16%;
+    --secondary-foreground: 220 15% 95%;
+
+    --muted: 220 25% 15%;
+    --muted-foreground: 220 15% 55%;
+
+    --accent: 152 25% 20%;
+    --accent-foreground: 152 60% 55%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 25% 18%;
+    --input: 220 25% 18%;
+    --ring: 152 60% 46%;
+
+    --sidebar-background: 220 25% 10%;
+    --sidebar-foreground: 220 15% 95%;
+    --sidebar-primary: 152 60% 46%;
+    --sidebar-primary-foreground: 220 25% 8%;
+    --sidebar-accent: 152 25% 18%;
+    --sidebar-accent-foreground: 152 60% 55%;
+    --sidebar-border: 220 25% 16%;
+    --sidebar-ring: 152 60% 46%;
+
+    --hero-overlay: linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.80) 100%);
+    --card-shadow: 0 2px 16px 0 hsl(0 0% 0% / 0.25);
+    --card-shadow-hover: 0 8px 32px 0 hsl(0 0% 0% / 0.4);
+    --nav-bg: hsl(220 25% 8% / 0.92);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-inter), sans-serif;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-unbounded), sans-serif;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-unbounded), sans-serif;
+  }
+
+  .font-body {
+    font-family: var(--font-inter), sans-serif;
+  }
+
+  .text-gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-glow)) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .card-sport {
+    @apply bg-card rounded-xl border border-border transition-all duration-300;
+    box-shadow: var(--card-shadow);
+  }
+
+  .card-sport:hover {
+    box-shadow: var(--card-shadow-hover);
+    @apply -translate-y-1;
+  }
+
+  .nav-glass {
+    background: var(--nav-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .hero-overlay {
+    background: var(--hero-overlay);
+  }
+
+  .badge-sport {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
+    background: hsl(var(--primary-muted));
+    color: hsl(var(--primary));
+  }
+
+  .animate-fade-up {
+    animation: fadeUp 0.6s ease-out both;
+  }
+
+  .animate-fade-up-delay-1 {
+    animation: fadeUp 0.6s ease-out 0.15s both;
+  }
+
+  .animate-fade-up-delay-2 {
+    animation: fadeUp 0.6s ease-out 0.3s both;
+  }
+
+  .animate-fade-up-delay-3 {
+    animation: fadeUp 0.6s ease-out 0.45s both;
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
