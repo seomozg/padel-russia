@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Search, SlidersHorizontal, MapPin, X, Loader2 } from "lucide-react";
-import { api, Court } from "@/lib/api";
+import { Court } from "@/lib/api";
 import CourtCard from "@/components/CourtCard";
 
 const TYPES = [
@@ -41,14 +41,19 @@ export default function CourtsClient({
 
   const [courts, setCourts] = useState<Court[]>(initialCourts);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState(initialSearch);
   const [city, setCity] = useState(initialCity);
   const [type, setType] = useState(initialType);
   const [sort, setSort] = useState(initialSort);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Обновление URL при изменении фильтров (для shareable links и SEO)
+  // Sync courts when SSR delivers new data (after filter change)
+  useEffect(() => {
+    setCourts(initialCourts);
+    setLoading(false);
+  }, [initialCourts]);
+
+  // Update URL on filter change → triggers SSR navigation
   const updateUrl = (newCity: string, newType: string, newSort: string, newSearch: string) => {
     const params = new URLSearchParams();
     if (newCity) params.set("city", newCity);
@@ -56,32 +61,9 @@ export default function CourtsClient({
     if (newSort && newSort !== "rating") params.set("sort", newSort);
     if (newSearch) params.set("search", newSearch);
     const query = params.toString();
+    setLoading(true);
     router.push(`/courts${query ? `?${query}` : ""}`, { scroll: false });
   };
-
-  // Загрузка кортов при изменении фильтров
-  useEffect(() => {
-    const loadCourts = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await api.getCourts({
-          city: city || undefined,
-          type: type || undefined,
-          sort: sort || undefined,
-          search: search || undefined,
-        });
-        setCourts(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load courts");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const timeoutId = setTimeout(loadCourts, 300); // debounce для поиска
-    return () => clearTimeout(timeoutId);
-  }, [city, type, sort, search]);
 
   const handleCityChange = (newCity: string) => {
     setCity(newCity);

@@ -25,7 +25,10 @@ services:
       args:
         - NEXT_PUBLIC_YANDEX_MAPS_API_KEY=34dbd6cf-1644-4d20-b774-b789a9613935
         - NEXT_PUBLIC_SITE_URL=https://padel-russia.online
-        # NEXT_PUBLIC_API_URL пустой = запросы идут на тот же домен, nginx проксирует к backend
+        - NEXT_PUBLIC_API_URL=http://backend:3001
+    environment:
+      - BACKEND_URL=http://backend:3001
+      - NEXT_PUBLIC_API_URL=http://backend:3001
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:

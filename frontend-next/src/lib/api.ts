@@ -1,8 +1,10 @@
 // API-клиент для PadelRussia
-// В Next.js используется как на сервере (SSR — fetch к backend), так и на клиенте.
-// process.env.NEXT_PUBLIC_API_URL доступен и на сервере, и на клиенте.
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+// Сервер (SSR): BACKEND_URL (runtime) — http://backend:3001 в Docker
+// Клиент: NEXT_PUBLIC_API_URL (inlined при сборке, пусто = запросы на текущий домен через nginx)
+const isServer = typeof window === 'undefined';
+const API_BASE_URL = isServer
+  ? (process.env.BACKEND_URL || 'http://backend:3001')
+  : (process.env.NEXT_PUBLIC_API_URL || '');
 
 export interface Court {
   id: string;
