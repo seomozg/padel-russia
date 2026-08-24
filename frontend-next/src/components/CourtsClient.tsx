@@ -30,26 +30,26 @@ interface CourtsClientProps {
 }
 
 export default function CourtsClient({
-  initialCourts,
-  citiesWithCount,
-  initialCity,
-  initialType,
-  initialSort,
-  initialSearch,
+  initialCourts = [],
+  citiesWithCount = [],
+  initialCity = "",
+  initialType = "",
+  initialSort = "rating",
+  initialSearch = "",
 }: CourtsClientProps) {
   const router = useRouter();
 
-  const [courts, setCourts] = useState<Court[]>(initialCourts);
+  const [courts, setCourts] = useState<Court[]>(initialCourts ?? []);
   const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState(initialSearch);
-  const [city, setCity] = useState(initialCity);
-  const [type, setType] = useState(initialType);
-  const [sort, setSort] = useState(initialSort);
+  const [search, setSearch] = useState(initialSearch ?? "");
+  const [city, setCity] = useState(initialCity ?? "");
+  const [type, setType] = useState(initialType ?? "");
+  const [sort, setSort] = useState(initialSort ?? "rating");
   const [showFilters, setShowFilters] = useState(false);
 
   // Sync courts when SSR delivers new data (after filter change)
   useEffect(() => {
-    setCourts(initialCourts);
+    setCourts(initialCourts ?? []);
     setLoading(false);
   }, [initialCourts]);
 
