@@ -202,12 +202,6 @@ export default function CourtsClient({
           <div className="flex justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        ) : error ? (
-          <div className="text-center py-20">
-            <p className="text-4xl mb-4">❌</p>
-            <h3 className="font-display font-bold text-xl mb-2">Ошибка загрузки</h3>
-            <p className="text-muted-foreground">{error}</p>
-          </div>
         ) : courts.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-4xl mb-4">🎾</p>
