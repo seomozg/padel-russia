@@ -1,5 +1,18 @@
 import Link from "next/link";
+import Script from "next/script";
 import { MapPin, Instagram, Send } from "lucide-react";
+
+// Конфиг виджета обязан попасть в HTML ДО загрузки widget.js
+// (виджет читает window.AIWidgetConfig при выполнении скрипта)
+const AI_WIDGET_CONFIG = `window.AIWidgetConfig = {
+  apiBase: 'https://site-agent.online',
+  collection: 'padel_russia_online',
+  title: 'ИИ помощник',
+  welcomeMessage: 'Привет. Чем могу помочь?',
+  color: '#778192',
+  sendText: 'Отправить',
+  placeholder: 'Введите сообщение'
+};`;
 
 export default function Footer() {
   return (
@@ -71,6 +84,10 @@ export default function Footer() {
           <p className="text-xs text-muted-foreground">© 2026 PadelRussia. Все права защищены.</p>
           <p className="text-xs text-muted-foreground">Сделано с ❤️ для любителей падела</p>
         </div>
+
+        {/* AI-виджет */}
+        <script dangerouslySetInnerHTML={{ __html: AI_WIDGET_CONFIG }} />
+        <Script src="https://site-agent.online/widget/widget.js" strategy="afterInteractive" />
       </div>
     </footer>
   );
