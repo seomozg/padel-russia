@@ -60,6 +60,17 @@ app/
 - ✅ `next/font` — самохостинг шрифтов (Inter, Unbounded)
 - ✅ Уникальные `alt` у изображений
 
+## ИИ-виджет в футере
+
+В `src/components/Footer.tsx` подключён внешний чат-виджет `https://site-agent.online/widget/widget.js`:
+
+- Конфиг (`window.AIWidgetConfig`) рендерится инлайновым `<script>` через `dangerouslySetInnerHTML` — так JSX остаётся валидным, а конфиг гарантированно попадает в HTML до загрузки самого виджета.
+- Сам скрипт подключается через `next/script` со стратегией `afterInteractive` — грузится после гидратации, не блокирует рендер.
+- Конфиг: `apiBase=https://site-agent.online`, `collection=padel_russia_online`, заголовок «ИИ помощник».
+- Виджет есть на всех страницах (Footer в корневом `app/layout.tsx`).
+
+> ⚠️ Endpoint `POST https://site-agent.online/chat/stream` сейчас отвечает `200 text/event-stream`, но не отдаёт токенов — в чате пользователь увидит «No response». Проблема на стороне сервиса site-agent.online, не фронтенда.
+
 ## ⚠️ БЕЗОПАСНОСТЬ БД
 
 **БД (SQLite в volume `db-data`) НЕ затрагивается при деплое этого frontend.**
