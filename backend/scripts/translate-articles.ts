@@ -98,6 +98,20 @@ async function main() {
   console.log(`📊 ИТОГИ ПЕРЕВОДА:`);
   console.log(`  Переведено статей: ${translated}`);
   console.log(`==================================================\n`);
+
+  // Контроль: если статьи остались без кириллицы — перевод не прошёл
+  // (типичная причина: 401 от DeepSeek → невалидный DEEPSEEK_API_KEY в .env)
+  const all = await prisma.article.findMany({
+    where: { content: { not: '' } },
+    select: { title: true, content: true },
+  });
+  const untranslated = all.filter((article) => !/[а-яё]/.test(article.content));
+  if (untranslated.length > 0) {
+    console.log(`⚠️ Не переведено статей: ${untranslated.length}`);
+    console.log('   Проверьте DEEPSEEK_API_KEY (в логе выше будут «Ошибка перевода: 401»)');
+    console.log(`   Пример: «${(untranslated[0].title || '').substring(0, 60)}»\n`);
+  }
+
   console.log('✅ Перевод завершен!');
   await prisma.$disconnect();
   process.exit(0);
