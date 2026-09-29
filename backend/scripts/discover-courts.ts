@@ -408,19 +408,23 @@ async function main() {
   }
 
   // Финальная разбивка: дедуп геокодированных против исходного каталога
+  // И против уже принятых кандидатов (иначе один клуб из двух источников
+  // добавился бы дважды) — порядок accepted: padelmesh, myachmyach, federation.
   const newList: CourtCandidate[] = [];
   const nogeo: CourtCandidate[] = [];
+  const finalPool: ExistingCourt[] = [...original];
   for (const candidate of accepted) {
     if (!candidate.coordinates) {
       nogeo.push(candidate);
       continue;
     }
-    const dedupe = dedupeCandidate(original, candidate);
+    const dedupe = dedupeCandidate(finalPool, candidate);
     if (dedupe.status === 'duplicate') {
       registerDuplicate(stats, dedupe.reason);
       continue;
     }
     newList.push(candidate);
+    finalPool.push(asExisting(candidate));
   }
 
   // Отчёт
