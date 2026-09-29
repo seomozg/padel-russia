@@ -15,17 +15,14 @@ fi
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Запуск парсинга новостей..."
 
 # 1. Парсинг новых статей
+# (DEEPSEEK_API_KEY/GOOGLE_PLACES_API_KEY приходят из .env через docker-compose environment)
 docker-compose exec -T \
   -e NODE_OPTIONS="--require /app/scripts/polyfill-file.js" \
-  -e DEEPSEEK_API_KEY \
-  -e GOOGLE_PLACES_API_KEY \
   backend npx ts-node scripts/scrape-news.ts 2>&1 || echo "⚠️ scrape-news завершился с ошибкой"
 
 # 2. Перевод новых статей
 docker-compose exec -T \
   -e NODE_OPTIONS="--require /app/scripts/polyfill-file.js" \
-  -e DEEPSEEK_API_KEY \
-  -e GOOGLE_PLACES_API_KEY \
   backend npx ts-node scripts/translate-articles.ts 2>&1 || echo "⚠️ translate-articles завершился с ошибкой"
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Парсинг новостей завершён."
