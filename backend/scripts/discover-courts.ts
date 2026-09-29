@@ -21,6 +21,7 @@ import {
   parseMyachmyachClub,
   parsePadelmeshClub,
   parsePadelmeshListing,
+  refineCity,
 } from '../src/modules/courts/court-discovery';
 import {
   addressLocalityMatches,
@@ -66,14 +67,18 @@ async function httpGet(url: string, timeout = 20000): Promise<string | null> {
   }
 }
 
-/** Геокодинг Nominatim для кандидатов без координат (та же цепочка, что у геокодинга кортов). */
-async function geocodeCandidate(candidate: CourtCandidate): Promise<boolean> {
+/**
+ * Геокодинг Nominatim для кандидатов без координат (та же цепочка, что у геокодинга кортов).
+ * 'address' — координаты по адресу (принимаем), 'city' — только центр города
+ * (НЕ принимаем: центр города ≠ адрес клуба, такие записи уходят в отчёт на ручную проверку).
+ */
+async function geocodeCandidate(candidate: CourtCandidate): Promise<'address' | 'city' | null> {
   const queries = buildGeocodeQueries(candidate.address || '', candidate.city);
 
-  for (const query of queries) {
+  for (let i = 0; i < queries.length; i++) {
     try {
       const response = await axios.get('https://nominatim.openstreetmap.org/search', {
-        params: { q: query, format: 'json', limit: 1, addressdetails: 1 },
+        params: { q: queries[i], format: 'json', limit: 1, addressdetails: 1 },
         headers: { 'User-Agent': 'PadelRussiaDiscover/1.0 (https://padel-russia.online)' },
         timeout: 20000,
       });
@@ -92,15 +97,18 @@ async function geocodeCandidate(candidate: CourtCandidate): Promise<boolean> {
         addressLocalityMatches(displayName, candidate.address || '');
       if (!valid) continue;
 
+      // Последний запрос в цепочке — «только город»: такой результат отклоняем
+      if (queries.length > 1 && i === queries.length - 1) return 'city';
+
       candidate.coordinates = { lat, lng };
-      return true;
+      return 'address';
     } catch (error: any) {
       console.error(`  ❌ Nominatim: ${error.message}`);
       await sleep(GEOCODE_DELAY_MS);
     }
   }
 
-  return false;
+  return null;
 }
 
 /** Скачивание картинки клуба в public/images/courts (в контейнере это volume → доступно сразу). */
@@ -393,18 +401,30 @@ async function main() {
   }
   if (detailsLoaded > 0) console.log(`   📄 Детальных страниц получено: ${detailsLoaded}`);
 
+  // Очистка поля city (в каталогах встречаются «Венецианская улица», «Падел Владивосток»)
+  for (const candidate of accepted) {
+    candidate.city = refineCity(candidate.city, candidate.address);
+  }
+
   // Геокодинг кандидатов без координат
   const needGeocode = accepted.filter((candidate) => !candidate.coordinates);
   if (!NO_GEOCODE && needGeocode.length > 0) {
     console.log(`📍 Геокодинг Nominatim: ${needGeocode.length} клубов…`);
+    let cityOnly = 0;
     for (const candidate of needGeocode) {
-      const ok = await geocodeCandidate(candidate);
-      if (!ok) {
+      const result = await geocodeCandidate(candidate);
+      if (result === 'city') {
+        cityOnly++;
+        stats.warnings.push(
+          `geocode(центр города): «${candidate.name}» (${candidate.city}) — адрес не найден, нужна ручная проверка`
+        );
+      } else if (result === null) {
         stats.warnings.push(
           `nogeo: «${candidate.name}» (${candidate.city}) — координаты не найдены`
         );
       }
     }
+    if (cityOnly > 0) console.log(`   ⚠️ Только центр города (не добавляем): ${cityOnly}`);
   }
 
   // Финальная разбивка: дедуп геокодированных против исходного каталога

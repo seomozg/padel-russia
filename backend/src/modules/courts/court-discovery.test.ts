@@ -5,6 +5,7 @@ import {
   cityFromMeta,
   dedupeCandidate,
   inferType,
+  looksLikeCity,
   mapAmenities,
   normalizePhone,
   parseFederationAddresses,
@@ -12,6 +13,7 @@ import {
   parseMyachmyachClub,
   parsePadelmeshClub,
   parsePadelmeshListing,
+  refineCity,
   slugify,
   uniqueSlug,
   CourtCandidate,
@@ -294,6 +296,59 @@ describe('dedupeCandidate', () => {
       coordinates: { lat: 55.79, lng: 49.18 },
     });
     expect(result.status).toBe('new');
+  });
+
+  it('совпадение значимого токена → duplicate (Территория Сквоша vs Территория. Сквош & Падел)', () => {
+    const withTerritory: ExistingCourt[] = [
+      {
+        slug: 'территория-сквош-падел',
+        name: 'Территория. Сквош & Падел',
+        city: 'Екатеринбург',
+        sourceUrl: null,
+        coordinates: { lat: 56.83, lng: 60.6 },
+      },
+    ];
+    const result = dedupeCandidate(withTerritory, {
+      ...base,
+      name: 'Территория Сквоша',
+      city: 'Екатеринбург',
+      coordinates: { lat: 56.91, lng: 60.61 }, // другая площадка, ~4 км — по токену ловим
+    });
+    expect(result).toMatchObject({ status: 'duplicate', reason: 'nameCity' });
+  });
+
+  it('разные клубы с одним общим словом < 8 символов не считаются дублем', () => {
+    const pair: ExistingCourt[] = [
+      { slug: 'rocket-ufa', name: 'Rocket Padel Уфа', city: 'Уфа', sourceUrl: null, coordinates: null },
+    ];
+    expect(dedupeCandidate(pair, { ...base, name: 'Rocket Padel Кемерово', city: 'Уфа' }).status).toBe(
+      'new'
+    );
+  });
+});
+
+describe('refineCity / looksLikeCity', () => {
+  it('мусорный city берётся из адреса', () => {
+    expect(refineCity('Венецианская улица', 'Краснодар, Венецианская улица, 1')).toBe('Краснодар');
+    expect(refineCity('Падел Владивосток', 'Владивосток, Приморский край, Владивосток, 3-я Поселковая улица, 20')).toBe(
+      'Владивосток'
+    );
+  });
+
+  it('пропускает региональные сегменты адреса', () => {
+    expect(
+      refineCity('проспект Космонавтов', 'Свердловская область, Екатеринбург, улица Тверитина, 45')
+    ).toBe('Екатеринбург');
+    expect(
+      refineCity('улица Жасминовая', 'Московская область, Апрелевка, Жасминовая улица, 11')
+    ).toBe('Апрелевка');
+  });
+
+  it('корректный город не меняется', () => {
+    expect(refineCity('Санкт-Петербург', 'некий адрес')).toBe('Санкт-Петербург');
+    expect(looksLikeCity('Нижний Новгород')).toBe(true);
+    expect(looksLikeCity('3-я Мытищинская улица')).toBe(false);
+    expect(looksLikeCity('Padel Club')).toBe(false);
   });
 });
 

@@ -331,6 +331,35 @@ export function cityFromMeta(meta: string): string {
   return segments.length > 0 ? segments[segments.length - 1] : '';
 }
 
+// Слова, которых не бывает в названии города (мусор из адресов/названий)
+const NOT_CITY_PARTS =
+  /(улица|ул\.|проспект|пр\.|шоссе|переулок|проезд|тракт|бульвар|набережная|микрорайон|спуск|территория|padel|падел|court|корты|клуб|этаж|стр\.|деревня|посёлок|поселок|мкр|тц |жк |кп )/i;
+const REGION_PARTS = /(край|область|округ|республика|федеральный)/i;
+
+/** Похоже ли значение на название города. */
+export function looksLikeCity(value: string): boolean {
+  const trimmed = (value || '').trim();
+  if (trimmed.length < 2 || trimmed.length > 45) return false;
+  if (/\d/.test(trimmed)) return false;
+  return !NOT_CITY_PARTS.test(trimmed);
+}
+
+/**
+ * Город из каталога бывает мусорным («Венецианская улица», «Падел Владивосток»).
+ * Если city не похож на город — достаём первый правдоподобный сегмент адреса,
+ * пропуская региональные («Свердловская область, Екатеринбург, …» → «Екатеринбург»).
+ */
+export function refineCity(city: string, address: string | null): string {
+  const trimmed = (city || '').trim();
+  if (looksLikeCity(trimmed)) return trimmed;
+
+  for (const segment of (address || '').split(',').map((s) => s.trim())) {
+    if (!segment || REGION_PARTS.test(segment)) continue;
+    if (looksLikeCity(segment)) return segment;
+  }
+  return trimmed;
+}
+
 export interface MyachmyachClubDetails {
   name: string;
   city: string | null;
@@ -436,9 +465,29 @@ function normalizeName(value: string): string {
     .trim();
 }
 
+// Общие слова, которые не могут быть признаком совпадения клубов
+const GENERIC_NAME_TOKENS = new Set([
+  'академия',
+  'спортивный',
+  'комплекс',
+  'олимпийский',
+  'молодежный',
+  'государственный',
+  'центральный',
+  'международный',
+]);
+
+/** Значимые токены названия (длина ≥ 8, без «клубных» общих слов). */
+function significantTokens(value: string): string[] {
+  return normalizeName(value)
+    .split(' ')
+    .filter((token) => token.length >= 8 && !GENERIC_NAME_TOKENS.has(token));
+}
+
 /**
  * Дедуп против каталога: 1) sourceUrl, 2) нормализованное название+город
- * (в т.ч. когда одно название — часть другого), 3) координаты ближе 200 м.
+ * (в т.ч. вхождение и совпадение значимого токена: «Территория Сквоша» vs
+ * «Территория. Сквош & Падел»), 3) координаты ближе 200 м.
  */
 export function dedupeCandidate(
   existing: ExistingCourt[],
@@ -453,13 +502,16 @@ export function dedupeCandidate(
 
   const candName = normalizeName(candidate.name);
   const candCity = normalizeName(candidate.city);
+  const candTokens = significantTokens(candidate.name);
   for (const court of existing) {
     if (normalizeName(court.city) !== candCity) continue;
     const dbName = normalizeName(court.name);
     const same =
       dbName === candName ||
       (candName.length >= 8 && dbName.includes(candName)) ||
-      (dbName.length >= 8 && candName.includes(dbName));
+      (dbName.length >= 8 && candName.includes(dbName)) ||
+      candTokens.some((token) => dbName.includes(token)) ||
+      significantTokens(court.name).some((token) => candName.includes(token));
     if (same) return { status: 'duplicate', reason: 'nameCity', matchSlug: court.slug };
   }
 
