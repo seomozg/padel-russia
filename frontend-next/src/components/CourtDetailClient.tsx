@@ -116,8 +116,12 @@ export default function CourtDetailClient({ court, typeLabels }: CourtDetailClie
               <p className="text-xs text-muted-foreground">кортов</p>
             </div>
             <div className="card-sport p-4 text-center">
-              <p className="font-display font-bold text-xl mb-1">{minPrice} ₽</p>
-              <p className="text-xs text-muted-foreground">от / час</p>
+              <p className="font-display font-bold text-xl mb-1">
+                {minPrice > 0 ? `${minPrice} ₽` : '—'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {minPrice > 0 ? 'от / час' : 'цена по запросу'}
+              </p>
             </div>
             <button onClick={handleLike} className="card-sport p-4 text-center hover:border-primary transition-colors">
               <div className="flex items-center justify-center gap-1 mb-1">

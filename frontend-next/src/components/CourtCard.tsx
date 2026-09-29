@@ -120,14 +120,17 @@ export default function CourtCard({ court }: CourtCardProps) {
 
           <div className="mt-auto flex items-center justify-between">
             <div>
-              <span className="text-xs text-muted-foreground">от </span>
-              <span className="font-display font-bold text-lg text-primary">
-                {court.prices && court.prices.length > 0
-                  ? Math.min(...court.prices.map(p => Math.min(p.weekday, p.weekend))).toLocaleString("ru")
-                  : "0"
-                } ₽
-              </span>
-              <span className="text-xs text-muted-foreground">/час</span>
+              {court.prices && court.prices.length > 0 ? (
+                <>
+                  <span className="text-xs text-muted-foreground">от </span>
+                  <span className="font-display font-bold text-lg text-primary">
+                    {Math.min(...court.prices.map((p) => Math.min(p.weekday, p.weekend))).toLocaleString("ru")} ₽
+                  </span>
+                  <span className="text-xs text-muted-foreground">/час</span>
+                </>
+              ) : (
+                <span className="text-sm font-medium text-muted-foreground">Цена по запросу</span>
+              )}
             </div>
             <div className="flex items-center gap-3 text-muted-foreground">
               <span className="flex items-center gap-1 text-xs">

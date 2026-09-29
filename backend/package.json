@@ -26,6 +26,7 @@
     "enrich:photos": "ts-node scripts/enrich-courts-photos.ts",
     "scrape:google": "ts-node scripts/scrape-google-places.ts",
     "geocode:courts": "ts-node scripts/geocode-courts.ts",
+    "discover:courts": "ts-node scripts/discover-courts.ts",
     "parse:courts": "ts-node scripts/parse-courts.ts"
   },
   "keywords": [],

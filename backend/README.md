@@ -294,6 +294,22 @@ POST /data-collector/courts/collect
 - Для перевода нужен `DEEPSEEK_API_KEY` — cron берёт его из корневого `.env` (см. `scripts/cron-news.sh`), ключей в git больше нет
 - Изображение по умолчанию: `/images/news/placeholder.svg`
 
+### Поиск новых кортов (`npm run discover:courts`)
+Без API-ключей, три безключевых источника:
+- **PadelMesh** (`padelmesh.com`, 179 клубов) — координаты/часы/тип/фото из листинга, адрес/телефон/описание/удобства из JSON-LD страницы клуба;
+- **МячМяч** (`padel.myachmyach.ru`, sitemap городов) — JSON-LD клуба, координаты через Nominatim;
+- **Федерация падела** (`federationpadel.ru/addresses`) — адрес/телефон/описание, координаты через Nominatim.
+
+```bash
+npm run discover:courts                          # dry-run: отчёт, ничего не пишет
+npm run discover:courts -- --apply               # добавить найденные клубы
+npm run discover:courts -- --sources=padelmesh   # только один источник
+npm run discover:courts -- --city=Москва         # фильтр по городу
+npm run discover:courts -- --limit=5             # отладочный прогон
+```
+
+Дедупликация против каталога (3 уровня): `sourceUrl` → нормализованное `название+город` → координаты ближе 200 м (haversine). Цены не фейковятся (`prices=[]`, в карточке — «Цена по запросу»), фото скачиваются в volume `/images/courts`. Логика парсинга/дедупа покрыта тестами: `npx jest src/modules/courts/court-discovery.test.ts`.
+
 ### Геокодинг кортов (`npm run geocode:courts`)
 ```bash
 npm run geocode:courts             # dry-run: отчёт без записи
