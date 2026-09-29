@@ -1,7 +1,10 @@
 import {
   DEFAULT_COORDINATES,
+  addressLocalityMatches,
+  buildGeocodeQueries,
   buildGeocodeQuery,
   cityMatches,
+  cleanAddressSegments,
   isDefaultCoordinates,
   normalizeCoordinates,
 } from './geocode-utils';
@@ -92,5 +95,65 @@ describe('cityMatches', () => {
   it('treats ё as е', () => {
     expect(cityMatches('город Орёл, Россия', 'орел')).toBe(true);
     expect(cityMatches('Салехард, Россия', 'салехард')).toBe(true);
+  });
+});
+
+describe('cleanAddressSegments', () => {
+  it('removes junk segments, country and duplicates', () => {
+    expect(
+      cleanAddressSegments('Москва, Москва, ул. Ленина, 1, стр. 5, Россия')
+    ).toEqual(['Москва', 'ул. Ленина', '1']);
+  });
+
+  it('removes mall/floor noise', () => {
+    expect(
+      cleanAddressSegments('ул. Фучика, 2, Санкт-Петербург ТЦ РИО, Санкт-Петербург')
+    ).toEqual(['ул. Фучика', '2', 'Санкт-Петербург ТЦ РИО', 'Санкт-Петербург']);
+  });
+});
+
+describe('buildGeocodeQueries', () => {
+  it('returns chain from exact to city-only, without duplicates', () => {
+    const queries = buildGeocodeQueries(
+      'Шарикоподшипниковская улица, 13, стр.5, Москва',
+      'Москва'
+    );
+
+    expect(queries[0]).toContain('стр.5'); // точный запрос
+    expect(queries[queries.length - 1]).toBe('Москва'); // город — последний рубеж
+    expect(
+      queries.some((q) => q.includes('Шарикоподшипниковская') && !q.includes('стр.5'))
+    ).toBe(true); // очищенный запрос без мусорного «стр.5»
+    expect(new Set(queries).size).toBe(queries.length); // без дублей
+  });
+
+  it('falls back to city when address is empty', () => {
+    expect(buildGeocodeQueries('', 'Казань')).toEqual(['Казань, Россия', 'Казань']);
+  });
+});
+
+describe('addressLocalityMatches', () => {
+  it('matches by street ignoring abbreviations (ул. vs улица)', () => {
+    expect(
+      addressLocalityMatches(
+        'ТРЦ «Рио», 2, улица Фучика, округ Волковское, Санкт-Петербург, Россия',
+        'ул. Фучика, 2, Санкт-Петербург ТЦ РИО, Санкт-Петербург'
+      )
+    ).toBe(true);
+  });
+
+  it('matches by settlement from address when city field is wrong', () => {
+    expect(
+      addressLocalityMatches(
+        'с1, улица Ильинский Подъезд, Жуковка, Одинцовский округ, Московская область',
+        'улица Ильинский Подъезд, с1, деревня Жуковка, Одинцовский городской округ, Москва'
+      )
+    ).toBe(true);
+  });
+
+  it('rejects unrelated result', () => {
+    expect(
+      addressLocalityMatches('Новосибирск, Россия', 'Пресненская наб., 2, Москва')
+    ).toBe(false);
   });
 });

@@ -10,7 +10,8 @@ import axios from 'axios';
 import { prisma } from '../src/config/database';
 import {
   DEFAULT_COORDINATES,
-  buildGeocodeQuery,
+  addressLocalityMatches,
+  buildGeocodeQueries,
   cityMatches,
   isDefaultCoordinates,
 } from '../src/modules/courts/geocode-utils';
@@ -65,48 +66,60 @@ async function main() {
   }
 
   let updated = 0;
-  let skipped = 0;
+  let cityFallback = 0;
   let failed = 0;
 
   for (const court of targets) {
-    const query = buildGeocodeQuery(court.address, court.city);
+    const queries = buildGeocodeQueries(court.address, court.city);
+    let accepted: { result: GeocodeResult; query: string; viaCity: boolean } | null = null;
 
     try {
-      const result = await geocode(query);
+      for (let i = 0; i < queries.length && !accepted; i++) {
+        const result = await geocode(queries[i]);
+        // Пауза после КАЖДОГО запроса — лимит Nominatim 1 req/sec
+        await sleep(REQUEST_DELAY_MS);
+        if (!result) continue;
 
-      if (!result) {
-        console.log(`  ⚠️  Не найдено: ${court.slug} — «${query}»`);
-        failed++;
-      } else if (!cityMatches(result.displayName, court.city, result.address)) {
-        console.log(
-          `  ⏭️  Город не совпал: ${court.slug} → «${result.displayName}» (ожидали «${court.city}»)`
-        );
-        skipped++;
-      } else {
-        console.log(
-          `  ✅ ${court.slug}: → ${result.lat}, ${result.lng} (${result.displayName})`
-        );
-        if (APPLY) {
-          await prisma.court.update({
-            where: { id: court.id },
-            data: { coordinates: { lat: result.lat, lng: result.lng } },
-          });
+        const valid =
+          cityMatches(result.displayName, court.city, result.address) ||
+          addressLocalityMatches(result.displayName, court.address);
+
+        if (valid) {
+          accepted = { result, query: queries[i], viaCity: i === queries.length - 1 && queries.length > 1 };
         }
-        updated++;
       }
+
+      if (!accepted) {
+        console.log(`  ⚠️  Не найдено: ${court.slug} — «${queries[0]}»`);
+        failed++;
+        continue;
+      }
+
+      const { result, query, viaCity } = accepted;
+      const marker = viaCity ? '🏙 центр города' : query;
+      console.log(
+        `  ✅ ${court.slug}: → ${result.lat}, ${result.lng} [${marker}] (${result.displayName})`
+      );
+
+      if (APPLY) {
+        await prisma.court.update({
+          where: { id: court.id },
+          data: { coordinates: { lat: result.lat, lng: result.lng } },
+        });
+      }
+      updated++;
+      if (viaCity) cityFallback++;
     } catch (error: any) {
       console.error(`  ❌ Ошибка: ${court.slug} — ${error.message}`);
       failed++;
     }
-
-    await sleep(REQUEST_DELAY_MS);
   }
 
   console.log('\n' + '='.repeat(50));
   console.log('📊 ИТОГИ ГЕОКОДИНГА:');
   console.log(`  Найдено и ${APPLY ? 'обновлено' : 'будет обновлено'}: ${updated}`);
-  console.log(`  Пропущено (город не совпал): ${skipped}`);
-  console.log(`  Ошибки/не найдено: ${failed}`);
+  console.log(`  Из них по центру города: ${cityFallback}`);
+  console.log(`  Не найдено/ошибки: ${failed}`);
   console.log('='.repeat(50));
 }
 
