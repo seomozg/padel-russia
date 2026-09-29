@@ -148,9 +148,19 @@ export function parseRssItems(xml: string): RssItem[] {
   $('item, entry').each((_, item) => {
     const title = $(item).find('title').first().text().trim();
 
-    // RSS: <link>текст</link>, Atom: <link href="..."/>
-    const linkNode = $(item).find('link').first();
-    const link = linkNode.text().trim() || linkNode.attr('href') || '';
+    // RSS: <link>текст</link>, Atom: <link href="..."/>, а некоторые ленты
+    // (padelmagazine.fr) отдают пустой <link/> — тогда URL берём из <guid>
+    let link = '';
+    $(item)
+      .find('link')
+      .each((__, node) => {
+        if (link) return;
+        link = $(node).text().trim() || $(node).attr('href') || '';
+      });
+    if (!/^https?:\/\//i.test(link)) {
+      const guid = $(item).find('guid').first().text().trim();
+      link = /^https?:\/\//i.test(guid) ? guid : link;
+    }
 
     const description =
       $(item).find('description').first().text() ||

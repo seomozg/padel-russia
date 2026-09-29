@@ -78,6 +78,30 @@ describe('parseRssItems', () => {
     expect(items[0].image).toBe('https://example.com/from-content.jpg');
   });
 
+  it('falls back to guid when feed has empty <link/> (padelmagazine.fr)', () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>Новость с пустой ссылкой</title>
+      <link/>
+      <guid isPermaLink="true">https://example.com/from-guid</guid>
+      <description>Описание</description>
+    </item>
+    <item>
+      <title>Guid без URL отбрасывается</title>
+      <link/>
+      <guid isPermaLink="false">post-123</guid>
+      <description>Описание</description>
+    </item>
+  </channel>
+</rss>`;
+
+    const items = parseRssItems(xml);
+    expect(items).toHaveLength(1);
+    expect(items[0].link).toBe('https://example.com/from-guid');
+  });
+
   it('returns empty array for invalid XML', () => {
     expect(parseRssItems('this is not xml at all')).toEqual([]);
   });
