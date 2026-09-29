@@ -8,6 +8,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import NavbarWrapper from "@/components/NavbarWrapper";
 import Footer from "@/components/Footer";
 import ThemeProvider from "@/components/ThemeProvider";
+import YandexMetrika from "@/components/YandexMetrika";
 
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
@@ -108,6 +109,7 @@ export default function RootLayout({
   return (
     <html lang="ru" suppressHydrationWarning>
       <body className={`${inter.variable} ${unbounded.variable}`}>
+        <YandexMetrika />
         <ThemeProvider>
           <QueryClientProvider>
             <TooltipProvider>

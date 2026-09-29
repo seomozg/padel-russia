@@ -60,6 +60,12 @@ app/
 - ✅ `next/font` — самохостинг шрифтов (Inter, Unbounded)
 - ✅ Уникальные `alt` у изображений
 
+## Аналитика
+
+- **Яндекс.Метрика** (ID `113162684`) — `src/components/YandexMetrika.tsx`, подключена первым элементом `<body>` в корневом `app/layout.tsx`, поэтому есть на всех страницах: `ssr`, `webvisor`, `clickmap`, `trackLinks`, `accurateTrackBounce`, `ecommerce: "dataLayer"` + `<noscript>`-пиксель.
+  - Скрипт и `noscript` отданы через `dangerouslySetInnerHTML`: JSX не выводит HTML-комментарии `<!-- -->`, а React иначе добавлял бы `<link rel="preload">` на пиксель в `<head>` (лишний хит в Метрику на каждую страницу).
+- **ИИ-виджет site-agent.online** — см. раздел ниже.
+
 ## ИИ-виджет в футере
 
 В `src/components/Footer.tsx` подключён внешний чат-виджет `https://site-agent.online/widget/widget.js`:
