@@ -71,7 +71,11 @@ app/
 - **Hero-картинка главной**: `public/images/hero-padel.jpg` (перенесена из Vite-версии `frontend/src/assets/`), рендерится в `app/page.tsx` до градиента `hero-overlay`.
 - **Заглушки**: если у корта/статьи нет картинки, компоненты подставляют
   `/images/court-placeholder.svg` и `/images/news/placeholder.svg` вместо пустого `src`.
-  ⚠️ Volume с картинками (`padel-russia_images-data`) монтируется поверх `public/images` в Docker — файлы нужно копировать именно в volume.
+- **Раздача `/images/*` — nginx напрямую из volume** (`alias /var/lib/docker/volumes/padel-russia_images-data/_data/`).
+  Причина: Next.js standalone отдаёт только файлы `public/`, существовавшие на момент старта
+  контейнера — новые картинки (скачанные скрапером) давали 404 до рестарта frontend.
+  ⚠️ Для этого nginx (www-data) нужен traverse-доступ: `chmod o+x /var/lib/docker`
+  (docker может сбросить право при перезапуске демона — тогда повторить).
 - **API-клиент**: сервер ходит на `BACKEND_URL` (`http://backend:3001`), браузер — на `/api` → nginx (`location /api/`, префикс срезается) → backend на `127.0.0.1:3001` (порт публикуется в `docker-compose.prod.yml`).
   Так работают админка, загрузка картинок (`/upload`) и `/health`.
 
