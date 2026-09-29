@@ -32,6 +32,7 @@ import {
 
 const APPLY = process.argv.includes('--apply');
 const NO_GEOCODE = process.argv.includes('--no-geocode');
+const FILL_IMAGES = process.argv.includes('--fill-images');
 const LIMIT = parseInt(getArg('--limit') || '0', 10) || 0;
 const CITY_FILTER = (getArg('--city') || '').trim().toLowerCase();
 const SOURCES = (getArg('--sources') || 'padelmesh,myachmyach,federation')
@@ -266,7 +267,7 @@ async function collectMyachmyach(
         phone: details?.phone || null,
         workingHours: null,
         description: null,
-        image: details?.image || null,
+        image: details?.image || card.logo || null,
         amenities: [],
         courtsCount: null,
       };
@@ -341,9 +342,102 @@ async function collectFederation(
   );
 }
 
+// ──────────────── дозаполнение фотографий (--fill-images) ────────────────
+
+/**
+ * Дозаполняет image у кортов, у которых стоит заглушка.
+ * URL берём пачкой из листинга PadelMesh (фото + логотип-пин) и городских
+ * страниц МячМяч (логотипы) — без походов на страницы клубов.
+ */
+async function fillImages(): Promise<void> {
+  console.log('\n🖼 Дозаполнение фотографий (--fill-images)');
+
+  const rows = await prisma.court.findMany({
+    where: {
+      image: '/images/court-placeholder.svg',
+      source: { in: ['padelmesh', 'myachmyach'] },
+    },
+    select: { slug: true, source: true, sourceUrl: true },
+  });
+  console.log(`Кортов с заглушкой: ${rows.length}`);
+  if (rows.length === 0) return;
+
+  const imageByUrl = new Map<string, string>();
+
+  if (rows.some((row) => row.source === 'padelmesh')) {
+    console.log('📡 PadelMesh: листинг (фото и логотипы)…');
+    for (let page = 1; page <= 8; page++) {
+      const url = page === 1 ? PADELMESH_LISTING : `${PADELMESH_LISTING}?page=${page}`;
+      const html = await httpGet(url);
+      if (html) {
+        for (const item of parsePadelmeshListing(html)) {
+          if (item.image) imageByUrl.set(item.sourceUrl, item.image);
+        }
+      }
+      await sleep(SITE_DELAY_MS);
+    }
+  }
+
+  if (rows.some((row) => row.source === 'myachmyach')) {
+    console.log('📡 МячМяч: городские страницы (логотипы)…');
+    const sitemap = await httpGet(MYACHMYACH_SITEMAP);
+    const cityUrls = sitemap
+      ? Array.from(
+          sitemap.matchAll(/<loc>(https:\/\/padel\.myachmyach\.ru\/padel[^<]*)<\/loc>/g)
+        )
+          .map((match) => match[1])
+          .filter((cityUrl) => !cityUrl.includes('-metro-'))
+      : [];
+
+    for (const cityUrl of Array.from(new Set(cityUrls))) {
+      const html = await httpGet(cityUrl);
+      await sleep(SITE_DELAY_MS);
+      if (!html) continue;
+      for (const card of parseMyachmyachCity(html)) {
+        if (card.logo) imageByUrl.set(card.url, card.logo);
+      }
+    }
+  }
+
+  console.log(`URL картинок собрано: ${imageByUrl.size}`);
+
+  let filled = 0;
+  let missed = 0;
+  for (const row of rows) {
+    if (!row.sourceUrl) {
+      missed++;
+      continue;
+    }
+    const imageUrl = imageByUrl.get(row.sourceUrl);
+    if (!imageUrl) {
+      missed++;
+      continue;
+    }
+    const imagePath = await downloadImage(imageUrl, row.slug);
+    await sleep(SITE_DELAY_MS);
+    if (!imagePath) {
+      missed++;
+      continue;
+    }
+    await prisma.court.update({ where: { slug: row.slug }, data: { image: imagePath } });
+    filled++;
+    console.log(`  ✅ ${row.slug}`);
+  }
+
+  console.log('\n' + '='.repeat(60));
+  console.log('📊 ИТОГИ --fill-images:');
+  console.log(`  Обновлено: ${filled}, без картинки в источнике: ${missed}`);
+  console.log('='.repeat(60));
+}
+
 // ───────────────────────────── main ─────────────────────────────
 
 async function main() {
+  if (FILL_IMAGES) {
+    await fillImages();
+    return;
+  }
+
   console.log(`\n🔎 Поиск новых падел-клубов (${APPLY ? 'APPLY' : 'DRY-RUN, без записи'})`);
   console.log(
     `Источники: ${SOURCES.join(', ')}${CITY_FILTER ? ` | город: ${CITY_FILTER}` : ''}${

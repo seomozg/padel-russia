@@ -175,6 +175,41 @@ export function isPadelRelated(text: string): boolean {
   return value.includes('padel') || value.includes('падел') || value.includes('tejo');
 }
 
+/**
+ * Делает URL картинки абсолютным и отсекает заглушки каталога.
+ * В листингах попадаются относительные пути (`/assets/…`, `assets/…`) и
+ * протокол-относительные (`//host/…`) — на них падал axios («Invalid URL»).
+ * `club-placeholder` — собственная заглушка PadelMesh, её не качаем.
+ */
+export function resolveImageUrl(
+  url: string | null | undefined,
+  base: string
+): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (/^data:/i.test(trimmed)) return null;
+  if (/club-placeholder/i.test(trimmed)) return null;
+
+  let absolute: string;
+  if (trimmed.startsWith('//')) {
+    absolute = `https:${trimmed}`;
+  } else if (trimmed.startsWith('/')) {
+    absolute = `${base.replace(/\/$/, '')}${trimmed}`;
+  } else if (/^https?:\/\//i.test(trimmed)) {
+    absolute = trimmed;
+  } else {
+    absolute = `${base.replace(/\/$/, '')}/${trimmed}`;
+  }
+
+  try {
+    new URL(absolute);
+  } catch {
+    return null;
+  }
+  return absolute;
+}
+
 export function haversineMeters(
   a: { lat: number; lng: number },
   b: { lat: number; lng: number }
@@ -247,8 +282,11 @@ export function parsePadelmeshListing(html: string): CourtCandidate[] {
       /* нет тегов — не страшно */
     }
 
-    let photo = (node.attr('data-photo-url') || '').trim() || null;
+    // Относительные URL ломали axios («Invalid URL») → резолвим, заглушки каталога отбрасываем
+    let photo = resolveImageUrl(node.attr('data-photo-url'), PADELMESH_BASE);
     if (photo) photo = photo.replace('/small/', '/large/');
+    // Если фото нет даже у каталога — берём логотип с карты (data-pin-image, есть у всех)
+    const image = photo || resolveImageUrl(node.attr('data-pin-image'), PADELMESH_BASE);
 
     items.push({
       source: 'padelmesh',
@@ -261,7 +299,7 @@ export function parsePadelmeshListing(html: string): CourtCandidate[] {
       phone: null,
       workingHours: canonicalHoursFromListing(node.attr('data-filter-working_hours')),
       description: null,
-      image: photo,
+      image,
       amenities: [],
       courtsCount,
     });
@@ -292,7 +330,7 @@ export function parsePadelmeshClub(html: string): PadelmeshClubDetails | null {
     .join(', ');
 
   const images = Array.isArray(location.image) ? location.image : [location.image];
-  const image = typeof images[0] === 'string' ? images[0] : null;
+  const image = resolveImageUrl(typeof images[0] === 'string' ? images[0] : null, PADELMESH_BASE);
 
   return {
     address: fullAddress || null,
@@ -304,19 +342,29 @@ export function parsePadelmeshClub(html: string): PadelmeshClubDetails | null {
   };
 }
 
-/** Городская страница МячМяч: карточки .club-card → название, мета (город) и ссылка. */
+/** Городская страница МячМяч: карточки .club-card → название, мета (город), ссылка и логотип. */
 export function parseMyachmyachCity(
   html: string
-): Array<{ name: string; url: string; meta: string }> {
+): Array<{ name: string; url: string; meta: string; logo: string | null }> {
   const $ = cheerio.load(html);
-  const result: Array<{ name: string; url: string; meta: string }> = [];
+  const result: Array<{ name: string; url: string; meta: string; logo: string | null }> = [];
 
   $('.club-card').each((_, el) => {
     const name = $(el).find('.club-name').first().text().trim();
     const href = $(el).find('.club-name-link').first().attr('href') || '';
     const meta = $(el).find('.club-meta').first().text().trim();
+    // Логотип есть только на городской карточке (на странице клуба его нет)
+    const logoSrc =
+      $(el).find('img.club-logo').first().attr('src') ||
+      $(el).find('img.club-logo').first().attr('data-src') ||
+      '';
     if (!name || !href) return;
-    result.push({ name, url: href.startsWith('http') ? href : `${MYACHMYACH_BASE}${href}`, meta });
+    result.push({
+      name,
+      url: href.startsWith('http') ? href : `${MYACHMYACH_BASE}${href}`,
+      meta,
+      logo: resolveImageUrl(logoSrc, MYACHMYACH_BASE),
+    });
   });
 
   return result;
@@ -378,15 +426,15 @@ export function parseMyachmyachClub(html: string): MyachmyachClubDetails | null 
   const city = String(address.addressLocality || '').trim() || null;
 
   const $ = cheerio.load(html);
-  const logo = $('img.club-logo').first().attr('src') || '';
-  const image = logo ? (logo.startsWith('http') ? logo : `${MYACHMYACH_BASE}/${logo.replace(/^\//, '')}`) : null;
+  const logoTag = $('img.club-logo').first();
+  const logo = logoTag.attr('src') || logoTag.attr('data-src') || '';
 
   return {
     name: String(location.name || '').trim(),
     city,
     address: street || null,
     phone: normalizePhone(location.telephone),
-    image,
+    image: resolveImageUrl(logo, MYACHMYACH_BASE),
   };
 }
 

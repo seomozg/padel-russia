@@ -303,10 +303,16 @@ POST /data-collector/courts/collect
 ```bash
 npm run discover:courts                          # dry-run: отчёт, ничего не пишет
 npm run discover:courts -- --apply               # добавить найденные клубы
+npm run discover:courts -- --fill-images         # дозаполнить фото у кортов-заглушек
 npm run discover:courts -- --sources=padelmesh   # только один источник
 npm run discover:courts -- --city=Москва         # фильтр по городу
 npm run discover:courts -- --limit=5             # отладочный прогон
 ```
+
+Фото: PadelMesh — фото из листинга (относительные URL резолвятся, собственные заглушки
+`club-placeholder` отбрасываются, fallback — логотип `data-pin-image`); МячМяч — логотип
+с городской карточки (`img.club-logo`). Режим `--fill-images` проходит по кортам с
+заглушкой и качает картинки пачкой из листингов, не трогая остальной пайплайн.
 
 Дедупликация против каталога (3 уровня): `sourceUrl` → нормализованное `название+город` → координаты ближе 200 м (haversine). Цены не фейковятся (`prices=[]`, в карточке — «Цена по запросу»), фото скачиваются в volume `/images/courts`. Логика парсинга/дедупа покрыта тестами: `npx jest src/modules/courts/court-discovery.test.ts`.
 

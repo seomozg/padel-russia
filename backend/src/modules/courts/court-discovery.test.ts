@@ -14,6 +14,7 @@ import {
   parsePadelmeshClub,
   parsePadelmeshListing,
   refineCity,
+  resolveImageUrl,
   slugify,
   uniqueSlug,
   CourtCandidate,
@@ -140,12 +141,14 @@ describe('parsePadelmeshClub (JSON-LD)', () => {
 });
 
 describe('parseMyachmyachCity / parseMyachmyachClub', () => {
-  it('карточки городской страницы', () => {
+  it('карточки городской страницы (включая логотип)', () => {
     const cards = parseMyachmyachCity(MYACHMYACH_CITY_HTML);
     expect(cards).toHaveLength(1);
     expect(cards[0].name).toBe('Padel&Squashclub');
     expect(cards[0].url).toBe('https://padel.myachmyach.ru/club-padelsquash');
     expect(cityFromMeta(cards[0].meta)).toBe('Екатеринбург');
+    // логотип есть только на городской карточке — берём его отсюда
+    expect(cards[0].logo).toBe('https://padel.myachmyach.ru/assets/logos/padelsquash.jpg');
   });
 
   it('JSON-LD клуба + логотип по абсолютному URL', () => {
@@ -349,6 +352,62 @@ describe('refineCity / looksLikeCity', () => {
     expect(looksLikeCity('Нижний Новгород')).toBe(true);
     expect(looksLikeCity('3-я Мытищинская улица')).toBe(false);
     expect(looksLikeCity('Padel Club')).toBe(false);
+  });
+});
+
+describe('resolveImageUrl', () => {
+  const BASE = 'https://padelmesh.com';
+
+  it('абсолютный URL — как есть', () => {
+    expect(resolveImageUrl('https://images.padelmesh.com/a/b.jpg', BASE)).toBe(
+      'https://images.padelmesh.com/a/b.jpg'
+    );
+  });
+
+  it('корневой относительный путь → абсолютный (причина «Invalid URL»)', () => {
+    expect(resolveImageUrl('/assets/clubs/photo.jpg', BASE)).toBe(
+      'https://padelmesh.com/assets/clubs/photo.jpg'
+    );
+  });
+
+  it('путь без слэша и протокол-относительный', () => {
+    expect(resolveImageUrl('assets/logos/x.jpg', 'https://padel.myachmyach.ru')).toBe(
+      'https://padel.myachmyach.ru/assets/logos/x.jpg'
+    );
+    expect(resolveImageUrl('//images.padelmesh.com/a.jpg', BASE)).toBe(
+      'https://images.padelmesh.com/a.jpg'
+    );
+  });
+
+  it('заглушка каталога, data-url и мусор → null', () => {
+    expect(resolveImageUrl('/assets/clubs/club-placeholder-abc.webp', BASE)).toBeNull();
+    expect(resolveImageUrl('data:image/png;base64,xxx', BASE)).toBeNull();
+    expect(resolveImageUrl('', BASE)).toBeNull();
+    expect(resolveImageUrl(null, BASE)).toBeNull();
+    expect(resolveImageUrl('http://', BASE)).toBeNull();
+  });
+});
+
+describe('фото в листинге PadelMesh (fallback на логотип)', () => {
+  const html = `
+  <ul>
+    <li data-name="Без фото" data-city="Омск" data-club-url="/ru/ru/omsk/clubs/no-photo"
+        data-latitude="54.99" data-longitude="73.39"
+        data-photo-url="/assets/clubs/club-placeholder-00f37277.webp"
+        data-pin-image="https://images.padelmesh.com/companies/42/logo/medium/pin.jpg"></li>
+    <li data-name="Протокол" data-city="Омск" data-club-url="/ru/ru/omsk/clubs/proto"
+        data-latitude="54.98" data-longitude="73.38"
+        data-photo-url="//images.padelmesh.com/uploads/club_photos/1/file/small/x.jpg"></li>
+  </ul>`;
+
+  it('заглушка каталога заменяется логотипом-пином', () => {
+    const items = parsePadelmeshListing(html);
+    expect(items[0].image).toBe('https://images.padelmesh.com/companies/42/logo/medium/pin.jpg');
+  });
+
+  it('протокол-относительное фото становится абсолютным и переводится в large', () => {
+    const items = parsePadelmeshListing(html);
+    expect(items[1].image).toBe('https://images.padelmesh.com/uploads/club_photos/1/file/large/x.jpg');
   });
 });
 

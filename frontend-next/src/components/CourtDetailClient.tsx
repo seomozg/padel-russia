@@ -306,25 +306,27 @@ export default function CourtDetailClient({ court, typeLabels }: CourtDetailClie
           <div className="p-5 bg-card rounded-xl border border-border">
             <h3 className="font-semibold text-sm mb-3">Контакты</h3>
             <div className="space-y-2 text-sm">
-              <div className="text-muted-foreground">
-                <div className="flex items-center gap-2 mb-2">
-                  <Clock size={15} className="text-primary shrink-0" />
-                  <span className="text-xs text-muted-foreground">Часы работы</span>
+              {courtState.workingHours && (
+                <div className="text-muted-foreground">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock size={15} className="text-primary shrink-0" />
+                    <span className="text-xs text-muted-foreground">Часы работы</span>
+                  </div>
+                  <table className="w-full text-xs">
+                    <tbody>
+                      {courtState.workingHours.split(", ").map((item, index) => {
+                        const [day, time] = item.split(": ");
+                        return (
+                          <tr key={index} className={index % 2 === 0 ? "bg-muted/30" : ""}>
+                            <td className="py-1 pl-2 pr-2 text-muted-foreground rounded-l">{day}</td>
+                            <td className="py-1 pr-2 text-right font-medium rounded-r">{time}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-                <table className="w-full text-xs">
-                  <tbody>
-                    {courtState.workingHours?.split(", ").map((item, index) => {
-                      const [day, time] = item.split(": ");
-                      return (
-                        <tr key={index} className={index % 2 === 0 ? "bg-muted/30" : ""}>
-                          <td className="py-1 pl-2 pr-2 text-muted-foreground rounded-l">{day}</td>
-                          <td className="py-1 pr-2 text-right font-medium rounded-r">{time}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              )}
               {courtState.phone && (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Phone size={15} className="text-primary" />
