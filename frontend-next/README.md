@@ -66,6 +66,28 @@ app/
   - Скрипт и `noscript` отданы через `dangerouslySetInnerHTML`: JSX не выводит HTML-комментарии `<!-- -->`, а React иначе добавлял бы `<link rel="preload">` на пиксель в `<head>` (лишний хит в Метрику на каждую страницу).
 - **ИИ-виджет site-agent.online** — см. раздел ниже.
 
+## Изображения и API
+
+- **Hero-картинка главной**: `public/images/hero-padel.jpg` (перенесена из Vite-версии `frontend/src/assets/`), рендерится в `app/page.tsx` до градиента `hero-overlay`.
+- **Заглушки**: если у корта/статьи нет картинки, компоненты подставляют
+  `/images/court-placeholder.svg` и `/images/news/placeholder.svg` вместо пустого `src`.
+  ⚠️ Volume с картинками (`padel-russia_images-data`) монтируется поверх `public/images` в Docker — файлы нужно копировать именно в volume.
+- **API-клиент**: сервер ходит на `BACKEND_URL` (`http://backend:3001`), браузер — на `/api` → nginx (`location /api/`, префикс срезается) → backend на `127.0.0.1:3001` (порт публикуется в `docker-compose.prod.yml`).
+  Так работают админка, загрузка картинок (`/upload`) и `/health`.
+
+## Карта
+
+- `YandexMap.tsx` уничтожает инстанс карты в cleanup и перед переинициализацией,
+  `CourtDetailClient` передаёт стабильный массив через `useMemo` — карта не «падает» после лайков/отзывов.
+- **Геокодинг**: `backend/scripts/geocode-courts.ts` (Nominatim/OSM) обновляет координаты
+  кортов с фиктивным центром Москвы `55.751244, 37.618423`:
+  ```bash
+  cd backend
+  npm run geocode:courts           # dry-run (отчёт)
+  npm run geocode:courts -- --apply  # запись в БД
+  ```
+  Город результата сверяется с городом корта (`cityMatches`), иначе корт пропускается.
+
 ## ИИ-виджет в футере
 
 В `src/components/Footer.tsx` подключён внешний чат-виджет `https://site-agent.online/widget/widget.js`:

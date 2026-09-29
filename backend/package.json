@@ -25,6 +25,7 @@
     "enrich:perplexity": "ts-node scripts/enrich-courts-perplexity.ts",
     "enrich:photos": "ts-node scripts/enrich-courts-photos.ts",
     "scrape:google": "ts-node scripts/scrape-google-places.ts",
+    "geocode:courts": "ts-node scripts/geocode-courts.ts",
     "parse:courts": "ts-node scripts/parse-courts.ts"
   },
   "keywords": [],

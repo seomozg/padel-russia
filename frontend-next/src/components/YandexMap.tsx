@@ -17,6 +17,10 @@ declare global {
 
 export default function YandexMap({ courts, center, zoom }: YandexMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
+  // Хранилище текущего инстанса карты — чтобы уничтожать его перед
+  // переинициализацией и при размонтировании (ymaps.Map не терпит
+  // повторную инициализацию одного и того же контейнера)
+  const mapInstanceRef = useRef<any>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
 
@@ -53,12 +57,20 @@ export default function YandexMap({ courts, center, zoom }: YandexMapProps) {
       if (!mapRef.current) return;
 
       try {
+        // Предыдущий инстанс (если был) — уничтожаем, иначе ymaps выбросит
+        // ошибку «повторная инициализация контейнера» и карта пропадёт
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.destroy();
+          mapInstanceRef.current = null;
+        }
+
         const map = new window.ymaps.Map(mapRef.current, {
           center: mapCenter,
           zoom: mapZoom,
           controls: ['zoomControl', 'fullscreenControl']
         });
 
+        mapInstanceRef.current = map;
         // Store map instance for later updates
         (mapRef.current as any)._yandexMap = map;
 
@@ -86,7 +98,14 @@ export default function YandexMap({ courts, center, zoom }: YandexMapProps) {
     }
 
     return () => {
-      // Cleanup if needed
+      // Cleanup: уничтожаем карту при размонтировании/переинициализации
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.destroy();
+        mapInstanceRef.current = null;
+      }
+      if (mapRef.current) {
+        (mapRef.current as any)._yandexMap = null;
+      }
     };
   }, [apiKey, courts]);
 

@@ -44,7 +44,7 @@ export default function CourtCard({ court }: CourtCardProps) {
         {/* Image */}
         <div className="relative aspect-[4/3] overflow-hidden">
           <img
-            src={court.image}
+            src={court.image || "/images/court-placeholder.svg"}
             alt={`${court.name} — падел-корт в ${court.city}`}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"

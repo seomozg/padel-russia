@@ -3,6 +3,9 @@ version: '3.8'
 services:
   backend:
     build: ./backend
+    ports:
+      # nginx (prod.conf) проксирует /api, /upload, /health на 127.0.0.1:3001
+      - "127.0.0.1:3001:3001"
     expose:
       - "3001"
     environment:
@@ -25,10 +28,11 @@ services:
       args:
         - NEXT_PUBLIC_YANDEX_MAPS_API_KEY=34dbd6cf-1644-4d20-b774-b789a9613935
         - NEXT_PUBLIC_SITE_URL=https://padel-russia.online
-        - NEXT_PUBLIC_API_URL=http://backend:3001
+        # Клиентские запросы идут на '/api' → nginx → backend:3001
+        - NEXT_PUBLIC_API_URL=/api
     environment:
       - BACKEND_URL=http://backend:3001
-      - NEXT_PUBLIC_API_URL=http://backend:3001
+      - NEXT_PUBLIC_API_URL=/api
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:

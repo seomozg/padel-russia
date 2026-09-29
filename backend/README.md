@@ -282,6 +282,27 @@ POST /data-collector/news/collect
 POST /data-collector/courts/collect
 ```
 
+### RSS-источники новостей (`npm run scrape:news`)
+Активные ленты заданы в `src/modules/scraper/news-scraper.ts` (`RSS_FEEDS`):
+- `https://padelmagazine.fr/feed/` — Новости
+- `https://www.thepadelpaper.com/feed/` — Турниры
+- `https://padelalto.com/feed/` — Новости
+
+Мёртвые источники удалены (проверено 29.09.2026): **World Padel Tour** (feed отдаёт 404 + сломанный TLS-сертификат), **Padel Intelligent** (403 от Cloudflare).
+
+- Разбор ленты — чистая функция `parseRssItems()`, покрыта unit-тестом: `npx jest src/modules/scraper/news-scraper.test.ts`
+- Для перевода нужен `DEEPSEEK_API_KEY` — cron берёт его из корневого `.env` (см. `scripts/cron-news.sh`), ключей в git больше нет
+- Изображение по умолчанию: `/images/news/placeholder.svg`
+
+### Геокодинг кортов (`npm run geocode:courts`)
+```bash
+npm run geocode:courts             # dry-run: отчёт без записи
+npm run geocode:courts -- --apply  # запись координат в БД
+```
+Источник — Nominatim/OpenStreetMap (1 запрос/сек). Обновляются корты с фиктивным центром Москвы
+`55.751244, 37.618423`; результат сверяется с городом корта (`cityMatches`), иначе — skip.
+Логика покрыта тестом: `npx jest src/modules/courts/geocode-utils.test.ts`.
+
 ### Получить статус последнего запуска
 ```http
 GET /data-collector/status

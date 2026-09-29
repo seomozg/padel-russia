@@ -108,7 +108,7 @@ export default async function ArticleDetailPage({ params }: ArticleDetailPagePro
         {/* Hero image */}
         <div className="relative h-64 md:h-96 overflow-hidden">
           <img
-            src={article.image}
+            src={article.image || "/images/news/placeholder.svg"}
             alt={article.title}
             className="w-full h-full object-cover"
           />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Star, Heart, Phone, Clock, Navigation2, Check, ChevronDown, ChevronUp, Loader2, Send, MapPin } from "lucide-react";
 import { api, Court } from "@/lib/api";
@@ -63,6 +63,9 @@ export default function CourtDetailClient({ court, typeLabels }: CourtDetailClie
   };
 
   const reviews = showAllReviews ? courtState.reviews : courtState.reviews.slice(0, 3);
+  // Стабильная ссылка для карты: без неё YandexMap переинициализировался бы
+  // на каждый рендер родителя (новый массив [courtState] каждый раз)
+  const mapCourts = useMemo(() => [courtState], [courtState]);
   const minPrice =
     courtState.prices && courtState.prices.length > 0
       ? Math.min(...courtState.prices.map((p) => Math.min(p.weekday, p.weekend)))
@@ -76,7 +79,7 @@ export default function CourtDetailClient({ court, typeLabels }: CourtDetailClie
           {/* Hero */}
           <div className="relative aspect-[16/9] rounded-2xl overflow-hidden">
             <img
-              src={courtState.image}
+              src={courtState.image || "/images/court-placeholder.svg"}
               alt={`${courtState.name} — падел-корт в ${courtState.city}`}
               className="w-full h-full object-cover"
             />
@@ -358,7 +361,7 @@ export default function CourtDetailClient({ court, typeLabels }: CourtDetailClie
             <h3 className="font-semibold text-sm mb-3">На карте</h3>
             <div className="rounded-lg overflow-hidden">
               <YandexMap
-                courts={[courtState]}
+                courts={mapCourts}
                 center={courtState.coordinates ? [courtState.coordinates.lat, courtState.coordinates.lng] : undefined}
                 zoom={15}
               />

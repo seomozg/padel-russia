@@ -4,11 +4,20 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { prisma } from '../../config/database';
 
-// RSS ленты для парсинга
+// RSS ленты для парсинга (проверено 29.09.2026)
+// Мёртвые источники удалены:
+//   - World Padel Tour: feed отдаёт 404 «Servicio no encontrado» + сломанный TLS-сертификат
+//   - Padel Intelligent: 403 (Cloudflare блокирует запросы)
+//   - Padel Alto: живой, но обновлялся до 06.12.2025 — оставлен на будущее
 const RSS_FEEDS = [
   {
-    url: 'https://www.worldpadeltour.com/rss/news',
-    name: 'World Padel Tour',
+    url: 'https://padelmagazine.fr/feed/',
+    name: 'Padel Magazine',
+    category: 'Новости',
+  },
+  {
+    url: 'https://www.thepadelpaper.com/feed/',
+    name: 'The Padel Paper',
     category: 'Турниры',
   },
   {
@@ -16,12 +25,14 @@ const RSS_FEEDS = [
     name: 'Padel Alto',
     category: 'Новости',
   },
-  {
-    url: 'https://www.padelintelligent.com/feed/',
-    name: 'Padel Intelligent',
-    category: 'Советы',
-  },
 ];
+
+// Полный User-Agent: без него часть сайтов (WordPress/Cloudflare) отдаёт 403
+const BROWSER_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+// Изображение-заглушка для статей без картинки (файл лежит в public/images/news/)
+const NEWS_PLACEHOLDER_IMAGE = '/images/news/placeholder.svg';
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
@@ -105,7 +116,7 @@ async function downloadImage(url: string, filename: string): Promise<string | nu
       responseType: 'arraybuffer',
       timeout: 10000,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'User-Agent': BROWSER_UA,
       },
     });
 
@@ -118,67 +129,97 @@ async function downloadImage(url: string, filename: string): Promise<string | nu
   }
 }
 
-// Парсинг RSS ленты
-async function parseRSSFeed(feedUrl: string): Promise<any[]> {
+export interface RssItem {
+  title: string;
+  link: string;
+  description: string;
+  pubDate: Date | null;
+  image: string;
+}
+
+/**
+ * Чистая функция разбора RSS/Atom XML в массив элементов.
+ * Не ходит в сеть — покрыта unit-тестом (news-scraper.test.ts).
+ */
+export function parseRssItems(xml: string): RssItem[] {
+  const $ = cheerio.load(xml, { xmlMode: true });
+  const items: RssItem[] = [];
+
+  $('item, entry').each((_, item) => {
+    const title = $(item).find('title').first().text().trim();
+
+    // RSS: <link>текст</link>, Atom: <link href="..."/>
+    const linkNode = $(item).find('link').first();
+    const link = linkNode.text().trim() || linkNode.attr('href') || '';
+
+    const description =
+      $(item).find('description').first().text() ||
+      $(item).find('summary').first().text() ||
+      '';
+    const pubDateRaw =
+      $(item).find('pubDate').first().text() ||
+      $(item).find('published').first().text() ||
+      $(item).find('updated').first().text();
+
+    // Поиск изображения в различных форматах
+    let image = '';
+
+    // Media namespace
+    const mediaContent = $(item).find('media\\:content, media\\:thumbnail').first();
+    if (mediaContent.attr('url')) {
+      image = mediaContent.attr('url') || '';
+    }
+
+    // Enclosure
+    if (!image) {
+      const enclosure = $(item).find('enclosure').first();
+      if (enclosure.attr('url') && (enclosure.attr('type') || '').startsWith('image/')) {
+        image = enclosure.attr('url') || '';
+      }
+    }
+
+    // Content:encoded → первый <img>
+    const contentEncoded = $(item).find('content\\:encoded').first().text();
+    if (!image && contentEncoded) {
+      const imgMatch = contentEncoded.match(/<img[^>]+src=["']([^"']+)["']/i);
+      if (imgMatch) {
+        image = imgMatch[1];
+      }
+    }
+
+    // Description → первый <img>
+    if (!image && description) {
+      const imgMatch = description.match(/<img[^>]+src=["']([^"']+)["']/i);
+      if (imgMatch) {
+        image = imgMatch[1];
+      }
+    }
+
+    items.push({
+      title,
+      link,
+      description: description.replace(/<[^>]*>/g, '').trim().substring(0, 300),
+      pubDate: pubDateRaw ? new Date(pubDateRaw) : null,
+      image,
+    });
+  });
+
+  // Элементы без заголовка или ссылки бесполезны: на них падала бы дедупликация
+  return items.filter((item) => item.title && item.link);
+}
+
+// Парсинг RSS ленты (сеть + parseRssItems)
+async function parseRSSFeed(feedUrl: string): Promise<RssItem[]> {
   try {
     const response = await axios.get(feedUrl, {
       timeout: 15000,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'User-Agent': BROWSER_UA,
+        Accept: 'application/rss+xml, application/xml, text/xml, */*',
       },
     });
 
-    const $ = cheerio.load(response.data, { xmlMode: true });
-    const items: any[] = [];
-
-    $('item').each((_, item) => {
-      const title = $(item).find('title').text();
-      const link = $(item).find('link').text();
-      const description = $(item).find('description').text();
-      const pubDate = $(item).find('pubDate').text();
-      
-      // Поиск изображения в различных форматах
-      let image = '';
-      
-      // Media namespace
-      const mediaContent = $(item).find('media\\:content, content');
-      if (mediaContent.attr('url')) {
-        image = mediaContent.attr('url') || '';
-      }
-      
-      // Enclosure
-      const enclosure = $(item).find('enclosure');
-      if (enclosure.attr('url') && enclosure.attr('type')?.startsWith('image/')) {
-        image = enclosure.attr('url') || '';
-      }
-      
-      // Content:encoded
-      const contentEncoded = $(item).find('content\\:encoded, encoded').text();
-      if (!image && contentEncoded) {
-        const imgMatch = contentEncoded.match(/<img[^>]+src=["']([^"']+)["']/i);
-        if (imgMatch) {
-          image = imgMatch[1];
-        }
-      }
-      
-      // Description image
-      if (!image && description) {
-        const imgMatch = description.match(/<img[^>]+src=["']([^"']+)["']/i);
-        if (imgMatch) {
-          image = imgMatch[1];
-        }
-      }
-
-      items.push({
-        title: title.trim(),
-        link: link.trim(),
-        description: description.replace(/<[^>]*>/g, '').trim().substring(0, 300),
-        pubDate: new Date(pubDate),
-        image,
-      });
-    });
-
-    return items;
+    return parseRssItems(response.data);
   } catch (error: any) {
     console.error(`  ❌ Ошибка парсинга RSS ${feedUrl}: ${error.message}`);
     return [];
@@ -218,7 +259,8 @@ async function getArticleContent(url: string): Promise<string> {
     const response = await axios.get(url, {
       timeout: 15000,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'User-Agent': BROWSER_UA,
+        'Accept-Language': 'en,ru;q=0.9',
       },
     });
 
@@ -322,7 +364,7 @@ export async function scrapeAllNews() {
           : translatedExcerpt;
 
         // Скачиваем изображение
-        let image = '/images/news/placeholder.jpg';
+        let image = NEWS_PLACEHOLDER_IMAGE;
         if (item.image) {
           const filename = `${generateSlug(translatedTitle)}_${Date.now()}.jpg`;
           const downloaded = await downloadImage(item.image, filename);

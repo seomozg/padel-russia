@@ -90,6 +90,12 @@ export default async function IndexPage() {
       <JsonLd data={websiteJsonLd} />
       {/* Hero */}
       <section className="relative min-h-[90vh] flex items-center overflow-hidden">
+        <img
+          src="/images/hero-padel.jpg"
+          alt="Падел-корт"
+          fetchPriority="high"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
         <div className="absolute inset-0 hero-overlay" />
         <div className="relative container mx-auto px-4 py-24">
           <div className="max-w-2xl animate-fade-up">

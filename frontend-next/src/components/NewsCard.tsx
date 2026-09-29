@@ -22,7 +22,7 @@ export default function NewsCard({ article, featured = false }: NewsCardProps) {
         <div className="card-sport overflow-hidden md:flex h-full">
           <div className="relative md:w-1/2 aspect-[16/9] md:aspect-auto overflow-hidden">
             <img
-              src={article.image}
+              src={article.image || "/images/news/placeholder.svg"}
               alt={article.title}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
@@ -59,7 +59,7 @@ export default function NewsCard({ article, featured = false }: NewsCardProps) {
       <div className="card-sport overflow-hidden h-full flex flex-col">
         <div className="relative aspect-[16/9] overflow-hidden">
           <img
-            src={article.image}
+            src={article.image || "/images/news/placeholder.svg"}
             alt={article.title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"

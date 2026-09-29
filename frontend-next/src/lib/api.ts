@@ -1,10 +1,10 @@
 // API-клиент для PadelRussia
 // Сервер (SSR): BACKEND_URL (runtime) — http://backend:3001 в Docker
-// Клиент: NEXT_PUBLIC_API_URL (inlined при сборке, пусто = запросы на текущий домен через nginx)
+// Клиент: NEXT_PUBLIC_API_URL (inlined при сборке) = '/api' → nginx проксирует /api/* на backend:3001
 const isServer = typeof window === 'undefined';
 const API_BASE_URL = isServer
   ? (process.env.BACKEND_URL || 'http://backend:3001')
-  : (process.env.NEXT_PUBLIC_API_URL || '');
+  : (process.env.NEXT_PUBLIC_API_URL || '/api');
 
 export interface Court {
   id: string;
