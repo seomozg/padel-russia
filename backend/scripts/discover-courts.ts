@@ -16,6 +16,7 @@ import {
   candidateToCourtData,
   cityFromMeta,
   dedupeCandidate,
+  looksLikeCity,
   parseFederationAddresses,
   parseMyachmyachCity,
   parseMyachmyachClub,
@@ -402,8 +403,16 @@ async function main() {
   if (detailsLoaded > 0) console.log(`   📄 Детальных страниц получено: ${detailsLoaded}`);
 
   // Очистка поля city (в каталогах встречаются «Венецианская улица», «Падел Владивосток»)
-  for (const candidate of accepted) {
+  // и отсев того, что городом так и не стало — координаты и фильтры были бы мусорными
+  for (let i = accepted.length - 1; i >= 0; i--) {
+    const candidate = accepted[i];
     candidate.city = refineCity(candidate.city, candidate.address);
+    if (!looksLikeCity(candidate.city)) {
+      stats.warnings.push(
+        `city: «${candidate.name}» — не удалось определить город (${candidate.city}), пропущено`
+      );
+      accepted.splice(i, 1);
+    }
   }
 
   // Геокодинг кандидатов без координат
