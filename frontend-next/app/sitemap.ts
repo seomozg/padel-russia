@@ -16,7 +16,9 @@ async function fetchCourts(): Promise<{ slug: string; updatedAt: string }[]> {
 
 async function fetchArticles(): Promise<{ slug: string; updatedAt: string }[]> {
   try {
-    const res = await fetch(`${backendUrl}/articles`, { cache: 'no-store' });
+    // limit у /articles по умолчанию = 10 — без явного лимита в sitemap попадала
+    // только 10 статей из 50
+    const res = await fetch(`${backendUrl}/articles?limit=1000`, { cache: 'no-store' });
     if (!res.ok) return [];
     const articles = await res.json();
     return articles.map((a: any) => ({ slug: a.slug, updatedAt: a.updatedAt }));
@@ -56,14 +58,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   const courtPages: MetadataRoute.Sitemap = courts.map((court) => ({
-    url: `${siteUrl}/courts/${court.slug}`,
+    // slugs с кириллицей должны быть percent-encoded по спецификации sitemap
+    url: `${siteUrl}/courts/${encodeURIComponent(court.slug)}`,
     lastModified: new Date(court.updatedAt),
     changeFrequency: "weekly" as const,
     priority: 0.8,
   }));
 
   const articlePages: MetadataRoute.Sitemap = articles.map((article) => ({
-    url: `${siteUrl}/news/${article.slug}`,
+    url: `${siteUrl}/news/${encodeURIComponent(article.slug)}`,
     lastModified: new Date(article.updatedAt),
     changeFrequency: "monthly" as const,
     priority: 0.6,
