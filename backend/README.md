@@ -294,6 +294,15 @@ POST /data-collector/courts/collect
 - Для перевода нужен `DEEPSEEK_API_KEY` — cron берёт его из корневого `.env` (см. `scripts/cron-news.sh`), ключей в git больше нет
 - Изображение по умолчанию: `/images/news/placeholder.svg`
 
+### Автоматика новостей (cron на сервере)
+```
+0 */4 * * * flock -n /tmp/padel-news.lock bash /var/www/padel-russia/scripts/cron-news.sh >> /var/log/padel-cron.log 2>&1
+```
+- Каждые 4 часа: парсинг RSS → создание статей → перевод новых через DeepSeek (при создании) + сводный `translate-articles.ts` для всего, что осталось на оригинальном языке (идемпотентен, пропускает уже русские);
+- Дедуп при парсинге — по `sourceUrl` (повторные запуски дубликатов не создают);
+- `flock -n` не даёт запускам накладываться; лог — `/var/log/padel-cron.log`;
+- Ручной запуск: `bash scripts/cron-news.sh` из `/var/www/padel-russia`.
+
 ### Поиск новых кортов (`npm run discover:courts`)
 Без API-ключей, три безключевых источника:
 - **PadelMesh** (`padelmesh.com`, 179 клубов) — координаты/часы/тип/фото из листинга, адрес/телефон/описание/удобства из JSON-LD страницы клуба;
