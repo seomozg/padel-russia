@@ -3,6 +3,11 @@ import * as cheerio from 'cheerio';
 import * as fs from 'fs';
 import * as path from 'path';
 import { prisma } from '../../config/database';
+import {
+  describeTranslationError,
+  hasCyrillic,
+  isRetryableTranslationError,
+} from './translation-utils';
 
 // RSS ленты для парсинга (проверено 29.09.2026)
 // Мёртвые источники удалены:
@@ -49,50 +54,67 @@ function generateSlug(title: string): string {
 }
 
 // Перевод через DeepSeek
+// Повтор при сетевых ошибках / 429 / 5xx; при 402 (нет баланса) и 401 — сразу отказ,
+// повтор бессмысленен (см. translation-utils). Возвращает оригинал при провале —
+// вызывающий код отличает провал по hasCyrillic/isSuccessfulTranslation.
 async function translateWithDeepSeek(text: string, targetLang: string = 'ru'): Promise<string> {
   if (!DEEPSEEK_API_KEY) {
     console.log('  ⚠️ DeepSeek API ключ не найден, возвращаю оригинал');
     return text;
   }
 
-  try {
-    const response = await axios.post(
-      DEEPSEEK_API_URL,
+  const payload = {
+    model: 'deepseek-chat',
+    messages: [
       {
-        model: 'deepseek-chat',
-        messages: [
-          {
-            role: 'system',
-            content: `Ты профессиональный переводчик и редактор. Твоя задача:
+        role: 'system',
+        content: `Ты профессиональный переводчик и редактор. Твоя задача:
 1. Перевести текст на русский язык (если он не на русском)
 2. Удалить весь мусор: навигацию, подписки, соцсети, GTM коды, iframe, "next article", "Latest news", "FOLLOW", "Share", и т.п.
 3. Оставить только основной содержательный контент статьи
 4. Сохранить стиль и смысл оригинала
 
 Верни только чистый перевод статьи без лишних элементов.`,
-          },
-          {
-            role: 'user',
-            content: text,
-          },
-        ],
-        max_tokens: 2000,
-        temperature: 0.3,
       },
       {
+        role: 'user',
+        content: text,
+      },
+    ],
+    max_tokens: 2000,
+    temperature: 0.3,
+  };
+
+  const attempts = [0, 3000]; // до двух попыток
+  let lastStatus: number | undefined;
+
+  for (let attempt = 0; attempt < attempts.length; attempt++) {
+    if (attempts[attempt] > 0) {
+      await new Promise(resolve => setTimeout(resolve, attempts[attempt]));
+    }
+    try {
+      const response = await axios.post(DEEPSEEK_API_URL, payload, {
         headers: {
           'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
           'Content-Type': 'application/json',
         },
         timeout: 30000,
-      }
-    );
+      });
 
-    return response.data.choices[0]?.message?.content || text;
-  } catch (error: any) {
-    console.error(`  ❌ Ошибка перевода: ${error.message}`);
-    return text;
+      const content = response.data.choices[0]?.message?.content;
+      if (content) return content;
+      lastStatus = undefined;
+    } catch (error: any) {
+      lastStatus = error.response?.status;
+      if (!isRetryableTranslationError(lastStatus)) break;
+      if (attempt < attempts.length - 1) {
+        console.log(`   ↻ ${describeTranslationError(lastStatus)}, повтор...`);
+      }
+    }
   }
+
+  console.error(`  ❌ ${describeTranslationError(lastStatus)}`);
+  return text;
 }
 
 // Скачивание изображения
@@ -386,11 +408,16 @@ export async function scrapeAllNews() {
         // Время чтения
         const readTime = calculateReadTime(translatedContent);
 
+        // Публикуем только если текст на русском (перевод прошёл или источник русский).
+        // Иначе статья скрыта с сайта до успешного перевода (см. translate-articles.ts).
+        const isRussian = hasCyrillic(translatedContent) || hasCyrillic(translatedTitle);
+
         const articleData = {
           slug: generateSlug(translatedTitle),
           title: translatedTitle,
           excerpt: translatedExcerpt.substring(0, 300),
           content: translatedContent,
+          published: isRussian,
           image,
           category: feed.category,
           readTime,
@@ -403,7 +430,7 @@ export async function scrapeAllNews() {
         });
         
         totalAdded++;
-        console.log(`  ✅ Добавлена: ${translatedTitle.substring(0, 50)}...`);
+        console.log(`  ✅ Добавлена${isRussian ? '' : ' (скрыта до перевода)'}: ${translatedTitle.substring(0, 50)}...`);
 
         // Задержка между запросами
         await new Promise(resolve => setTimeout(resolve, 500));
