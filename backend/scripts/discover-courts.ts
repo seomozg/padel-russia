@@ -7,8 +7,6 @@
 //   npx ts-node scripts/discover-courts.ts --limit=5       # отладочный прогон
 import 'dotenv/config';
 import axios from 'axios';
-import * as fs from 'fs';
-import * as path from 'path';
 import { prisma } from '../src/config/database';
 import {
   CourtCandidate,
@@ -29,6 +27,11 @@ import {
   buildGeocodeQueries,
   cityMatches,
 } from '../src/modules/courts/geocode-utils';
+import { GEOCODE_DELAY_MS, SITE_DELAY_MS, downloadImage, httpGet, sleep } from './lib/http';
+import { MYACHMYACH_SITEMAP, PADELMESH_LISTING } from './lib/sources';
+import { Stats, asExisting, registerDuplicate } from './lib/stats';
+import { printDiscoveryReport } from './lib/report';
+import { fillImages } from './lib/fill-images';
 
 const APPLY = process.argv.includes('--apply');
 const NO_GEOCODE = process.argv.includes('--no-geocode');
@@ -45,28 +48,6 @@ function getArg(name: string): string | null {
     if (arg.startsWith(`${name}=`)) return arg.slice(name.length + 1);
   }
   return null;
-}
-
-const USER_AGENT =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-const SITE_DELAY_MS = 500; // вежливость к каталогам
-const GEOCODE_DELAY_MS = 1100; // лимит Nominatim 1 req/sec
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function httpGet(url: string, timeout = 20000): Promise<string | null> {
-  try {
-    const response = await axios.get(url, {
-      timeout,
-      headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'ru,ru-RU;q=0.9,en;q=0.6' },
-      responseType: 'text',
-      maxRedirects: 5,
-    });
-    return typeof response.data === 'string' ? response.data : String(response.data);
-  } catch (error: any) {
-    console.error(`  ❌ GET ${url}: ${error.message}`);
-    return null;
-  }
 }
 
 /**
@@ -113,63 +94,13 @@ async function geocodeCandidate(candidate: CourtCandidate): Promise<'address' | 
   return null;
 }
 
-/** Скачивание картинки клуба в public/images/courts (в контейнере это volume → доступно сразу). */
-async function downloadImage(url: string, slug: string): Promise<string | null> {
-  try {
-    const response = await axios.get(url, {
-      responseType: 'arraybuffer',
-      timeout: 20000,
-      headers: { 'User-Agent': USER_AGENT },
-    });
-    const contentType = String(response.headers['content-type'] || '');
-    const ext = contentType.includes('png')
-      ? 'png'
-      : contentType.includes('webp')
-        ? 'webp'
-        : contentType.includes('jpeg') || contentType.includes('jpg')
-          ? 'jpg'
-          : (path.extname(new URL(url).pathname).replace('.', '').toLowerCase() || 'jpg');
-    const imagesDir = path.join(process.cwd(), 'public', 'images', 'courts');
-    if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
-    const filename = `${slug}_${Date.now()}.${ext}`;
-    fs.writeFileSync(path.join(imagesDir, filename), Buffer.from(response.data as ArrayBuffer));
-    return `/images/courts/${filename}`;
-  } catch (error: any) {
-    console.error(`  ⚠️ Не скачалось фото (${error.message})`);
-    return null;
-  }
-}
-
 // ────────────────────────── сбор кандидатов ──────────────────────────
-
-interface Stats {
-  found: Record<string, number>;
-  duplicates: { sourceUrl: number; nameCity: number; nearCoords: number };
-  warnings: string[];
-}
 
 function matchesCity(city: string): boolean {
   if (!CITY_FILTER) return true;
   return city.trim().toLowerCase() === CITY_FILTER;
 }
 
-function asExisting(candidate: CourtCandidate): ExistingCourt {
-  return {
-    slug: candidate.sourceUrl,
-    name: candidate.name,
-    city: candidate.city,
-    sourceUrl: candidate.sourceUrl,
-    coordinates: candidate.coordinates,
-  };
-}
-
-function registerDuplicate(stats: Stats, reason?: string) {
-  if (reason === 'sourceUrl') stats.duplicates.sourceUrl++;
-  else if (reason === 'nearCoords') stats.duplicates.nearCoords++;
-  else stats.duplicates.nameCity++;
-}
-
-const PADELMESH_LISTING = 'https://padelmesh.com/ru/ru/clubs';
 
 async function collectPadelmesh(
   pool: ExistingCourt[],
@@ -202,7 +133,6 @@ async function collectPadelmesh(
   console.log(`   Найдено: ${items.length}, новых после дедупа: ${kept}`);
 }
 
-const MYACHMYACH_SITEMAP = 'https://padel.myachmyach.ru/sitemap.xml';
 
 async function collectMyachmyach(
   pool: ExistingCourt[],
@@ -342,94 +272,6 @@ async function collectFederation(
   );
 }
 
-// ──────────────── дозаполнение фотографий (--fill-images) ────────────────
-
-/**
- * Дозаполняет image у кортов, у которых стоит заглушка.
- * URL берём пачкой из листинга PadelMesh (фото + логотип-пин) и городских
- * страниц МячМяч (логотипы) — без походов на страницы клубов.
- */
-async function fillImages(): Promise<void> {
-  console.log('\n🖼 Дозаполнение фотографий (--fill-images)');
-
-  const rows = await prisma.court.findMany({
-    where: {
-      image: '/images/court-placeholder.svg',
-      source: { in: ['padelmesh', 'myachmyach'] },
-    },
-    select: { slug: true, source: true, sourceUrl: true },
-  });
-  console.log(`Кортов с заглушкой: ${rows.length}`);
-  if (rows.length === 0) return;
-
-  const imageByUrl = new Map<string, string>();
-
-  if (rows.some((row) => row.source === 'padelmesh')) {
-    console.log('📡 PadelMesh: листинг (фото и логотипы)…');
-    for (let page = 1; page <= 8; page++) {
-      const url = page === 1 ? PADELMESH_LISTING : `${PADELMESH_LISTING}?page=${page}`;
-      const html = await httpGet(url);
-      if (html) {
-        for (const item of parsePadelmeshListing(html)) {
-          if (item.image) imageByUrl.set(item.sourceUrl, item.image);
-        }
-      }
-      await sleep(SITE_DELAY_MS);
-    }
-  }
-
-  if (rows.some((row) => row.source === 'myachmyach')) {
-    console.log('📡 МячМяч: городские страницы (логотипы)…');
-    const sitemap = await httpGet(MYACHMYACH_SITEMAP);
-    const cityUrls = sitemap
-      ? Array.from(
-          sitemap.matchAll(/<loc>(https:\/\/padel\.myachmyach\.ru\/padel[^<]*)<\/loc>/g)
-        )
-          .map((match) => match[1])
-          .filter((cityUrl) => !cityUrl.includes('-metro-'))
-      : [];
-
-    for (const cityUrl of Array.from(new Set(cityUrls))) {
-      const html = await httpGet(cityUrl);
-      await sleep(SITE_DELAY_MS);
-      if (!html) continue;
-      for (const card of parseMyachmyachCity(html)) {
-        if (card.logo) imageByUrl.set(card.url, card.logo);
-      }
-    }
-  }
-
-  console.log(`URL картинок собрано: ${imageByUrl.size}`);
-
-  let filled = 0;
-  let missed = 0;
-  for (const row of rows) {
-    if (!row.sourceUrl) {
-      missed++;
-      continue;
-    }
-    const imageUrl = imageByUrl.get(row.sourceUrl);
-    if (!imageUrl) {
-      missed++;
-      continue;
-    }
-    const imagePath = await downloadImage(imageUrl, row.slug);
-    await sleep(SITE_DELAY_MS);
-    if (!imagePath) {
-      missed++;
-      continue;
-    }
-    await prisma.court.update({ where: { slug: row.slug }, data: { image: imagePath } });
-    filled++;
-    console.log(`  ✅ ${row.slug}`);
-  }
-
-  console.log('\n' + '='.repeat(60));
-  console.log('📊 ИТОГИ --fill-images:');
-  console.log(`  Обновлено: ${filled}, без картинки в источнике: ${missed}`);
-  console.log('='.repeat(60));
-}
-
 // ───────────────────────────── main ─────────────────────────────
 
 async function main() {
@@ -550,39 +392,7 @@ async function main() {
     finalPool.push(asExisting(candidate));
   }
 
-  // Отчёт
-  console.log('\n' + '='.repeat(60));
-  console.log('📊 ОТЧЁТ ПО ПОИСКУ КЛУБОВ');
-  console.log(
-    `  Найдено в источниках: padelmesh=${stats.found.padelmesh ?? 0}, myachmyach=${
-      stats.found.myachmyach ?? 0
-    }, federation=${stats.found.federation ?? 0}`
-  );
-  console.log(
-    `  Дубликаты (пропущены): sourceUrl=${stats.duplicates.sourceUrl}, name+city=${
-      stats.duplicates.nameCity
-    }, coords<200м=${stats.duplicates.nearCoords}`
-  );
-  console.log(`  Без координат (не будут добавлены): ${nogeo.length}`);
-  console.log(`  ✅ НОВЫХ К ДОБАВЛЕНИЮ: ${newList.length}`);
-  if (stats.warnings.length > 0) {
-    console.log(`  ⚠️ Предупреждения (${stats.warnings.length}):`);
-    for (const warning of stats.warnings.slice(0, 20)) console.log(`     - ${warning}`);
-    if (stats.warnings.length > 20) console.log(`     … ещё ${stats.warnings.length - 20}`);
-  }
-
-  if (newList.length > 0) {
-    console.log('\nСписок новых клубов:');
-    for (const candidate of newList) {
-      const coords = candidate.coordinates
-        ? `${candidate.coordinates.lat.toFixed(5)}, ${candidate.coordinates.lng.toFixed(5)}`
-        : '—';
-      console.log(
-        `  + ${candidate.name} | ${candidate.city} | ${candidate.address || 'адрес уточняется'} | ${coords} | ${candidate.type} | ${candidate.phone || 'телефон —'} | ${candidate.source}`
-      );
-    }
-  }
-  console.log('='.repeat(60));
+  printDiscoveryReport(stats, newList, nogeo);
 
   if (newList.length === 0) {
     console.log('\nНовых клубов не найдено.');

@@ -2,8 +2,10 @@
 node_modules/
 
 # Build outputs
-frontend/dist/
 backend/dist/
+
+# Сгенерированный Prisma-клиент (восстанавливается при npm install / prisma generate)
+backend/src/generated/
 
 # Environment files
 .env
