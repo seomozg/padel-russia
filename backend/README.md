@@ -291,7 +291,7 @@ POST /data-collector/courts/collect
 Мёртвые источники удалены (проверено 29.09.2026): **World Padel Tour** (feed отдаёт 404 + сломанный TLS-сертификат), **Padel Intelligent** (403 от Cloudflare).
 
 - Разбор ленты — чистая функция `parseRssItems()`, покрыта unit-тестом: `npx jest src/modules/scraper/news-scraper.test.ts`
-- Для перевода нужен `DEEPSEEK_API_KEY` — cron берёт его из корневого `.env` (см. `scripts/cron-news.sh`), ключей в git больше нет
+- Для перевода нужен `DEEPSEEK_API_KEY` — cron берёт его из корневого `.env` (см. `scripts/cron-news.sh`), ключей в git больше нет. Ручной запуск перевода: `npm run translate:news`
 - Изображение по умолчанию: `/images/news/placeholder.svg`
 
 ### Автоматика новостей (cron на сервере)
@@ -325,6 +325,8 @@ npm run discover:courts -- --limit=5             # отладочный прог
 заглушкой и качает картинки пачкой из листингов, не трогая остальной пайплайн.
 
 Дедупликация против каталога (3 уровня): `sourceUrl` → нормализованное `название+город` → координаты ближе 200 м (haversine). Цены не фейковятся (`prices=[]`, в карточке — «Цена по запросу»), фото скачиваются в volume `/images/courts`. Логика парсинга/дедупа покрыта тестами: `npx jest src/modules/courts/court-discovery.test.ts`.
+
+Структура кода: парсеры источников, нормализация и дедуп разнесены по модулям `src/modules/courts/discovery/*` (единая точка входа — баррель `court-discovery.ts`); CLI-конвейер — `scripts/discover-courts.ts`, вспомогательные вещи (HTTP, статистика, отчёт, `--fill-images`) — `scripts/lib/*`.
 
 ### Геокодинг кортов (`npm run geocode:courts`)
 ```bash
@@ -457,14 +459,14 @@ GET /health
 
 ## 🔧 Скрипты для разработки
 
-### Очистка базы данных
+### Применить схему Prisma к БД
 ```bash
-npm run db:reset
+npx prisma db push
 ```
 
 ### Заполнение демо-данными
 ```bash
-npm run db:seed
+npm run seed
 ```
 
 ### Генерация типов Prisma
