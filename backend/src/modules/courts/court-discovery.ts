@@ -1,12 +1,14 @@
 // Поиск и парсинг новых падел-клубов из безключевых каталогов.
 // Источники (проверены 29.09.2026):
-//   1. PadelMesh  — /ru/ru/clubs?page=N: в листинге data-атрибуты (координаты,
-//                   часы, тип, фото), на странице клуба JSON-LD (адрес, телефон,
-//                   описание, удобства).
-//   2. МячМяч     — padel-<город> → club-<slug>: JSON-LD (адрес, телефон),
-//                   координаты берём из Nominatim.
-//   3. Федерация  — federationpadel.ru/addresses: аккордеоны Tilda, координаты из Nominatim.
-// Чистые функции покрыты юнит-тестами (court-discovery.test.ts).
+//   1. PadelMesh  — листинг с data-атрибутами, страница клуба с JSON-LD.
+//   2. МячМяч     — карточки клубов городской страницы + JSON-LD.
+//   3. Федерация  — federationpadel.ru/addresses, аккордеоны Tilda.
+//
+// Реализация разбита по модулям в папке discovery/ (SRP: один файл — одна
+// ответственность); здесь — единая точка входа. Чистые функции покрыты
+// юнит-тестами court-discovery.test.ts.
+export * from './discovery';
+
 import * as cheerio from 'cheerio';
 
 export type CourtSource = 'padelmesh' | 'myachmyach' | 'federation';
