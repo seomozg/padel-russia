@@ -74,8 +74,11 @@ app/
 - **Раздача `/images/*` — nginx напрямую из volume** (`alias /var/lib/docker/volumes/padel-russia_images-data/_data/`).
   Причина: Next.js standalone отдаёт только файлы `public/`, существовавшие на момент старта
   контейнера — новые картинки (скачанные скрапером) давали 404 до рестарта frontend.
-  ⚠️ Для этого nginx (www-data) нужен traverse-доступ: `chmod o+x /var/lib/docker`
-  (docker может сбросить право при перезапуске демона — тогда повторить).
+  ⚠️ Для этого nginx (www-data) нужен traverse-доступ: `chmod o+x /var/lib/docker`.
+  На сервере установлен systemd drop-in `/etc/systemd/system/docker.service.d/padel-images.conf`
+  (`ExecStartPost=/usr/bin/chmod o+x /var/lib/docker`) — право восстанавливается автоматически
+  при каждом старте/перезапуске docker-демона (раньше демон сбрасывал его, и все `/images/*`
+  начинали отдавать 403; симптом — в error-логе `open() … failed (13: Permission denied)`).
 - **API-клиент**: сервер ходит на `BACKEND_URL` (`http://backend:3001`), браузер — на `/api` → nginx (`location /api/`, префикс срезается) → backend на `127.0.0.1:3001` (порт публикуется в `docker-compose.prod.yml`).
   Так работают админка, загрузка картинок (`/upload`) и `/health`.
 
