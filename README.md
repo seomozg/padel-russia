@@ -83,6 +83,26 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 nginx слушает 80/443, TLS — Let's Encrypt (`/etc/letsencrypt`). Детали деплоя — в [backend/README.md](backend/README.md) и [frontend-next/README.md](frontend-next/README.md).
 
+### Продакшен на Timeweb (89.223.122.221)
+
+- **Хост**: `scripts/setup-host.sh` — swap 4G, docker + compose v2, systemd drop-in
+  (`ExecStartPost=chmod o+x /var/lib/docker`) чтобы системный nginx (www-data) мог
+  отдавать `/images/*` напрямую из docker-volume.
+- **Код**: clone в `/opt/padel-russia`, секреты в корневом `.env` (по `.env.example`).
+  Хост-порты задаются в `.env`: `FRONTEND_HOST_PORT=3100`, `BACKEND_HOST_PORT=3101` —
+  `127.0.0.1:3000` на этом хосте занят соседним next-server.
+- **nginx**: шаблон [`nginx/timeweb.conf`](nginx/timeweb.conf) копируется в
+  `/etc/nginx/conf.d/padel-russia.conf`; listen — на IP хоста, `server_name` без IP
+  (чтобы не перехватывать трафик соседних сайтов VestaCP), перед каждой перезагрузкой — `nginx -t`.
+  TLS: `certbot certonly --webroot -w /var/lib/padel-russia-acme -d padel-russia.online`,
+  автопродление — `certbot.timer`.
+- **БД**: `docker compose -f docker-compose.prod.yml exec backend npx prisma db push`.
+- **Данные**: наполнение — `discover-courts.ts --apply` (каталог) и `scripts/cron-news.sh`
+  (новости, cron `0 */4 * * *`), перевод публикует статьи автоматически после валидного
+  `DEEPSEEK_API_KEY`.
+- **Аккаунт**: `POST /auth/register` (учётки роль-системы нет); креды для админки —
+  `/root/padel-admin-credentials.txt` на сервере (mode 600).
+
 ## Тесты
 
 ```bash
