@@ -296,12 +296,12 @@ POST /data-collector/courts/collect
 
 ### Автоматика новостей (cron на сервере)
 ```
-0 */4 * * * flock -n /tmp/padel-news.lock bash /var/www/padel-russia/scripts/cron-news.sh >> /var/log/padel-cron.log 2>&1
+0 */4 * * * flock -n /tmp/padel-news.lock bash /opt/padel-russia/scripts/cron-news.sh >> /var/log/padel-cron.log 2>&1
 ```
 - Каждые 4 часа: парсинг RSS → создание статей → перевод новых через DeepSeek (при создании) + сводный `translate-articles.ts` для всего, что осталось на оригинальном языке (идемпотентен, пропускает уже русские);
 - Дедуп при парсинге — по `sourceUrl` (повторные запуски дубликатов не создают);
 - `flock -n` не даёт запускам накладываться; лог — `/var/log/padel-cron.log`;
-- Ручной запуск: `bash scripts/cron-news.sh` из `/var/www/padel-russia`.
+- Ручной запуск: `bash scripts/cron-news.sh` из корня репозитория (на Timeweb — `/opt/padel-russia`).
 - **Если баланс DeepSeek исчерпан (HTTP 402)** — в логе появится баланс DeepSeek исчерпан (402), а такие статьи **скрываются с сайта** (published=false) до успешного перевода: на русскоязычном сайте не показываются оригиналы на иностранном языке. Пополните баланс DEEPSEEK_API_KEY — после следующего запуска cron (≤4 ч) статьи будут переведены и автоматически опубликованы. Ошибки перевода логируются человекочитаемо (402 — баланс, 401 — невалидный ключ); повторы делаются только при сетевых ошибках и 429/5xx.
 
 ### Поиск новых кортов (`npm run discover:courts`)

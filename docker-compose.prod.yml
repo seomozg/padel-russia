@@ -4,8 +4,10 @@ services:
   backend:
     build: ./backend
     ports:
-      # nginx (prod.conf) проксирует /api, /upload, /health на 127.0.0.1:3001
-      - "127.0.0.1:3001:3001"
+      # nginx (prod.conf) проксирует /api, /upload, /health на backend:3001
+      # Хост-порт настраиваем (.env): на Timeweb 127.0.0.1:3000 занят соседним
+      # next-server → в .env задан BACKEND_HOST_PORT=3101
+      - "127.0.0.1:${BACKEND_HOST_PORT:-3001}:3001"
     expose:
       - "3001"
     environment:
@@ -15,6 +17,9 @@ services:
       - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
       # Секреты берутся из корневого .env (читают compose и scripts/cron-news.sh)
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      # Ключи сборщика кортов (discovery/geocode внутри контейнера)
+      - YANDEX_MAPS_API_KEY=${YANDEX_MAPS_API_KEY}
+      - GIS_MAPS_API_KEY=${GIS_MAPS_API_KEY}
       # Node 18 не имеет глобального File — скрипты (scrape/discover) требуют полифайл
       - NODE_OPTIONS=--require /app/scripts/polyfill-file.js
       - REDIS_ENABLED=false
@@ -38,7 +43,9 @@ services:
       - BACKEND_URL=http://backend:3001
       - NEXT_PUBLIC_API_URL=/api
     ports:
-      - "127.0.0.1:3000:3000"
+      # Хост-порт настраиваем (.env): 127.0.0.1:3000 на Timeweb занят соседним
+      # next-server → в .env задан FRONTEND_HOST_PORT=3100
+      - "127.0.0.1:${FRONTEND_HOST_PORT:-3000}:3000"
     depends_on:
       - backend
     volumes:
