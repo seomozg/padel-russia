@@ -10,6 +10,7 @@ import { courtsRouter } from './modules/courts/courts.routes';
 import { articlesRouter } from './modules/articles/articles.routes';
 import { reviewsRouter } from './modules/reviews/reviews.routes';
 import { mapsRouter } from './modules/maps/maps.routes';
+import { authRouter } from './modules/auth/auth.routes';
 import { redisClient } from './config/redis';
 
 const app = express();
@@ -57,6 +58,7 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Routes
+app.use('/auth', authRouter);
 app.use('/courts', courtsRouter);
 app.use('/articles', articlesRouter);
 app.use('/reviews', reviewsRouter);
